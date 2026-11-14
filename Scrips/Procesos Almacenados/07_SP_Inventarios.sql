@@ -1,5 +1,6 @@
 USE ClickMarketDB;
 GO
+
 -- 07 - Inventarios. El inventario se crea automaticamente al crear un producto.
 -- Las operaciones de reserva/confirmacion/liberacion deben coordinarse con Pedidos y Pagos.
 
@@ -14,21 +15,6 @@ BEGIN
     FROM dbo.Inventarios I
     INNER JOIN dbo.Productos P ON P.ProductoID = I.ProductoID
     WHERE I.ProductoID = @ProductoID;
-END;
-GO
-
-CREATE OR ALTER PROCEDURE dbo.sp_Inventarios_Listar
-    @VendedorID INT = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT I.InventarioID, I.ProductoID, P.Nombre AS Producto,
-           P.VendedorID, I.CantidadDisponible, I.CantidadReservada,
-           I.CantidadDisponible + I.CantidadReservada AS CantidadTotal
-    FROM dbo.Inventarios I
-    INNER JOIN dbo.Productos P ON P.ProductoID = I.ProductoID
-    WHERE @VendedorID IS NULL OR P.VendedorID = @VendedorID
-    ORDER BY I.ProductoID;
 END;
 GO
 

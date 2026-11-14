@@ -75,15 +75,3 @@ BEGIN
     EXEC dbo.sp_Categorias_ConsultarPorID @CategoriaID;
 END;
 GO
-
-CREATE OR ALTER PROCEDURE dbo.sp_Categorias_Activar
-    @CategoriaID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    IF NOT EXISTS (SELECT 1 FROM dbo.Categorias WHERE CategoriaID = @CategoriaID)
-        THROW 50307, 'La categoria no existe.', 1;
-    UPDATE dbo.Categorias SET Activa = 1 WHERE CategoriaID = @CategoriaID;
-    EXEC dbo.sp_Categorias_ConsultarPorID @CategoriaID;
-END;
-GO

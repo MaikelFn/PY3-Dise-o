@@ -129,25 +129,3 @@ BEGIN
     EXEC dbo.sp_Productos_ConsultarPorID @ProductoID;
 END;
 GO
-
-CREATE OR ALTER PROCEDURE dbo.sp_Productos_Activar
-    @ProductoID INT,
-    @VendedorID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    IF NOT EXISTS (SELECT 1 FROM dbo.Productos
-                   WHERE ProductoID = @ProductoID AND VendedorID = @VendedorID)
-        THROW 50410, 'El producto no existe o no pertenece al vendedor.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.Productos P
-                   INNER JOIN dbo.Categorias C ON C.CategoriaID = P.CategoriaID
-                   INNER JOIN dbo.Vendedores V ON V.VendedorID = P.VendedorID
-                   LEFT JOIN dbo.Usuarios U ON U.UsuarioID = V.UsuarioID
-                   WHERE P.ProductoID = @ProductoID AND C.Activa = 1 AND V.Activo = 1
-                     AND (V.EsClickMarket = 1 OR U.Activo = 1))
-        THROW 50411, 'La categoria o el vendedor estan inactivos.', 1;
-    UPDATE dbo.Productos SET Activo = 1
-    WHERE ProductoID = @ProductoID AND VendedorID = @VendedorID;
-    EXEC dbo.sp_Productos_ConsultarPorID @ProductoID;
-END;
-GO

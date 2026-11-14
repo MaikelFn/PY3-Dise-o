@@ -123,36 +123,6 @@ END;
 GO
 
 -- ============================================
--- 4. LISTAR USUARIOS
--- ============================================
-
-CREATE OR ALTER PROCEDURE dbo.sp_Usuarios_Listar
-    @RolID INT = NULL,
-    @SoloActivos BIT = 1
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        U.UsuarioID,
-        U.Nombre,
-        U.Apellido,
-        U.Correo,
-        R.Nombre AS Rol,
-        U.FechaRegistro,
-        U.Activo
-    FROM dbo.Usuarios U
-    INNER JOIN dbo.Roles R
-        ON U.RolID = R.RolID
-    WHERE
-        (@RolID IS NULL OR U.RolID = @RolID)
-        AND
-        (@SoloActivos = 0 OR U.Activo = 1)
-    ORDER BY U.UsuarioID;
-END;
-GO
-
--- ============================================
 -- 5. ACTUALIZAR USUARIO
 -- ============================================
 
@@ -229,7 +199,3 @@ BEGIN
     EXEC dbo.sp_Usuarios_ConsultarPorID @UsuarioID;
 END;
 GO
-
--- ============================================
--- 7. LISTAR ROLES
--- ============================================

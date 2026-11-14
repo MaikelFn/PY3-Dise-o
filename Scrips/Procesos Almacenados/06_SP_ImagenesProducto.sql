@@ -51,27 +51,6 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE dbo.sp_ImagenesProducto_Actualizar
-    @ImagenID INT,
-    @VendedorID INT,
-    @ImagenURL NVARCHAR(500),
-    @Orden INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SET @ImagenURL = NULLIF(TRIM(@ImagenURL), N'');
-    IF @ImagenURL IS NULL THROW 50504, 'La ruta de la imagen es obligatoria.', 1;
-    IF @Orden IS NULL OR @Orden < 0 THROW 50505, 'El orden no puede ser negativo.', 1;
-    UPDATE IP SET ImagenURL = @ImagenURL, Orden = @Orden
-    FROM dbo.ImagenesProducto IP
-    INNER JOIN dbo.Productos P ON P.ProductoID = IP.ProductoID
-    WHERE IP.ImagenID = @ImagenID AND P.VendedorID = @VendedorID AND P.Activo = 1;
-    IF @@ROWCOUNT = 0 THROW 50506, 'Imagen no encontrada o sin permiso para modificarla.', 1;
-    SELECT ImagenID, ProductoID, ImagenURL, EsPrincipal, Orden
-    FROM dbo.ImagenesProducto WHERE ImagenID = @ImagenID;
-END;
-GO
-
 CREATE OR ALTER PROCEDURE dbo.sp_ImagenesProducto_EstablecerPrincipal
     @ImagenID INT,
     @VendedorID INT

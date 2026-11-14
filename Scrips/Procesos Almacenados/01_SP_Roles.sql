@@ -14,6 +14,3 @@ BEGIN
     ORDER BY RolID;
 END;
 GO
-
-PRINT 'Procedimientos de Usuarios y Roles creados correctamente.';
-GO
