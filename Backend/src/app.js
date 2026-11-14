@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const session = require('express-session');
 const authRoutes = require('./routes/auth.routes');
+const categoriaRoutes = require('./routes/categoria.routes');
 
 const app = express();
 app.use(helmet());
@@ -22,6 +23,7 @@ app.use(session({
   }
 }));
 app.use('/api/auth', authRoutes);
+app.use('/api/categorias', categoriaRoutes);
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 app.use((error, _req, res, _next) => {
   console.error('Error interno:', error);

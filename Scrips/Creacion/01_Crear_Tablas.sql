@@ -110,8 +110,7 @@ GO
 CREATE TABLE dbo.Categorias (
     CategoriaID INT IDENTITY(1,1) PRIMARY KEY,
     Nombre NVARCHAR(100) NOT NULL UNIQUE,
-    Descripcion NVARCHAR(300) NULL,
-    Activa BIT NOT NULL DEFAULT 1
+    Descripcion NVARCHAR(300) NULL
 );
 GO
 
@@ -323,15 +322,8 @@ GO
 
 CREATE TABLE dbo.MetodosPago (
     MetodoPagoID INT IDENTITY(1,1) PRIMARY KEY,
-    Nombre VARCHAR(30) NOT NULL UNIQUE,
-    Descripcion NVARCHAR(200) NULL,
-    Activo BIT NOT NULL DEFAULT 1,
-
-    CONSTRAINT CK_MetodosPago_Nombre
-        CHECK (Nombre IN (
-            'Tarjeta',
-            'Transferencia'
-        ))
+    Nombre NVARCHAR(50) NOT NULL UNIQUE,
+    Descripcion NVARCHAR(200) NULL
 );
 GO
 
@@ -373,21 +365,10 @@ GO
 
 CREATE TABLE dbo.TiposEnvio (
     TipoEnvioID INT IDENTITY(1,1) PRIMARY KEY,
-    Nombre VARCHAR(30) NOT NULL UNIQUE,
-    Descripcion NVARCHAR(200) NULL,
-    CostoBase DECIMAL(12,2) NOT NULL DEFAULT 0,
-    Activo BIT NOT NULL DEFAULT 1,
-
-    CONSTRAINT CK_TiposEnvio_Nombre
-        CHECK (Nombre IN (
-            'Estandar',
-            'Expres'
-        )),
-
-    CONSTRAINT CK_TiposEnvio_Costo
-        CHECK (CostoBase >= 0)
+    Nombre NVARCHAR(50) NOT NULL UNIQUE,
+    CostoBase DECIMAL(10,2) NOT NULL,
+    Descripcion NVARCHAR(200) NULL
 );
-GO
 
 -- ============================================
 -- 17. ENVIOS
