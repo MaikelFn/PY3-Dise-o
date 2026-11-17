@@ -1,4 +1,5 @@
 const { sql, getPool } = require('../config/database');
+const { usuarioPuedeVerPedido } = require('./pedido.controller');
 
 async function listarDetallesPedido(req, res) {
   try {
@@ -16,26 +17,9 @@ async function listarDetallesPedido(req, res) {
 
     const conexion = await getPool();
 
-    const acceso = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .query(`
-        SELECT P.PedidoID
-        FROM dbo.Pedidos P
-        WHERE P.PedidoID = @PedidoID
-          AND (
-            P.UsuarioID = @UsuarioID
-            OR EXISTS (
-              SELECT 1
-              FROM dbo.Usuarios U
-              INNER JOIN dbo.Roles R ON R.RolID = U.RolID
-              WHERE U.UsuarioID = @UsuarioID
-                AND R.Nombre = 'Administrador'
-            )
-          )
-      `);
-
-    if (!acceso.recordset.length) {
+    if (!await usuarioPuedeVerPedido(
+      conexion, pedidoID, req.session.usuario
+    )) {
       return res.status(404).json({
         mensaje: 'Pedido no encontrado'
       });

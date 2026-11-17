@@ -18,26 +18,44 @@ function validarID(id) {
   return Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
 }
 
-async function tieneAcceso(conexion, pedidoID, usuario) {
+async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
   const resultado = await conexion.request()
     .input('PedidoID', sql.Int, pedidoID)
     .input('UsuarioID', sql.Int, usuario.id)
-    .query(`
-      SELECT PedidoID
-      FROM dbo.Pedidos
-      WHERE PedidoID = @PedidoID
-        AND (
-          UsuarioID = @UsuarioID
-          OR @UsuarioID IN (
-            SELECT U.UsuarioID
-            FROM dbo.Usuarios U
-            INNER JOIN dbo.Roles R ON R.RolID = U.RolID
-            WHERE R.Nombre = 'Administrador'
-          )
-        )
-    `);
+    .execute('dbo.sp_Pedidos_ValidarAcceso');
 
   return resultado.recordset.length > 0;
+}
+
+// Para rutas donde :id es el PedidoID (ej. /api/pedidos/:id/pagos).
+// Debe ejecutarse despues de verificarSesion.
+async function verificarAccesoPedido(req, res, next) {
+  try {
+    const pedidoID = Number(req.params.id);
+
+    if (!validarID(pedidoID)) {
+      return res.status(400).json({
+        mensaje: 'ID de pedido inválido'
+      });
+    }
+
+    const conexion = await getPool();
+
+    if (!await usuarioPuedeVerPedido(
+      conexion, pedidoID, req.session.usuario
+    )) {
+      return res.status(404).json({
+        mensaje: 'Pedido no encontrado'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al verificar acceso al pedido'
+    });
+  }
 }
 
 async function crearPedido(req, res) {
@@ -79,7 +97,7 @@ async function consultarPedido(req, res) {
 
     const conexion = await getPool();
 
-    if (!await tieneAcceso(
+    if (!await usuarioPuedeVerPedido(
       conexion, pedidoID, req.session.usuario
     )) {
       return res.status(404).json({
@@ -148,7 +166,7 @@ async function cancelarPedido(req, res) {
 
     const conexion = await getPool();
 
-    if (!await tieneAcceso(
+    if (!await usuarioPuedeVerPedido(
       conexion, pedidoID, req.session.usuario
     )) {
       return res.status(404).json({
@@ -174,5 +192,7 @@ module.exports = {
   consultarPedido,
   listarPedidos,
   confirmarPedido,
-  cancelarPedido
+  cancelarPedido,
+  usuarioPuedeVerPedido,
+  verificarAccesoPedido
 };
