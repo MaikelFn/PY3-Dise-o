@@ -1,5 +1,6 @@
 const { sql, getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
+const { publicarEvento } = require('../events/pedido.events');
 
 function idValido(valor) {
   const numero = Number(valor);
@@ -89,9 +90,33 @@ async function actualizarEstadoEnvio(req, res) {
       .input('NuevoEstado', sql.VarChar(20), nuevoEstado)
       .execute('dbo.sp_Envios_ActualizarEstado');
 
+    const envioActualizado = resultado.recordset[0];
+
+    if (
+      envioActualizado &&
+      ['Enviado', 'Entregado'].includes(envioActualizado.Estado)
+    ) {
+      const pedidoResultado = await conexion.request()
+        .input('PedidoID', sql.Int, envioActualizado.PedidoID)
+        .execute('dbo.sp_Pedidos_ConsultarPorID');
+
+      const pedido = pedidoResultado.recordset[0];
+
+      if (pedido) {
+        const tipo = envioActualizado.Estado === 'Enviado'
+          ? 'envio.enviado'
+          : 'envio.entregado';
+
+        await publicarEvento(tipo, {
+          usuarioID: pedido.UsuarioID,
+          pedidoID: envioActualizado.PedidoID
+        });
+      }
+    }
+
     return res.json({
       mensaje: 'Estado del envío actualizado',
-      envio: resultado.recordset[0]
+      envio: envioActualizado
     });
   } catch (error) {
     console.error(error);

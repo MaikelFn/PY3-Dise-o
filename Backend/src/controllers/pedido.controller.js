@@ -1,4 +1,5 @@
 const { sql, getPool } = require('../config/database');
+const { publicarEvento } = require('../events/pedido.events');
 
 function manejarError(res, error) {
   console.error(error);
@@ -76,9 +77,16 @@ async function crearPedido(req, res) {
       .input('TipoEnvioID', sql.Int, tipoEnvioID)
       .execute('dbo.sp_Pedidos_CrearDesdeCarrito');
 
+    const pedidoID = resultado.recordset[0].PedidoID;
+
+    await publicarEvento('pedido.creado', {
+      usuarioID: req.session.usuario.id,
+      pedidoID
+    });
+
     return res.status(201).json({
       mensaje: 'Pedido creado e inventario reservado',
-      pedidoID: resultado.recordset[0].PedidoID
+      pedidoID
     });
   } catch (error) {
     return manejarError(res, error);
@@ -178,9 +186,16 @@ async function cancelarPedido(req, res) {
       .input('PedidoID', sql.Int, pedidoID)
       .execute('dbo.sp_Pedidos_Cancelar');
 
+    const pedidoCancelado = resultado.recordset[0];
+
+    await publicarEvento('pedido.cancelado', {
+      usuarioID: pedidoCancelado.UsuarioID,
+      pedidoID
+    });
+
     return res.json({
       mensaje: 'Pedido cancelado e inventario liberado',
-      pedido: resultado.recordset[0]
+      pedido: pedidoCancelado
     });
   } catch (error) {
     return manejarError(res, error);

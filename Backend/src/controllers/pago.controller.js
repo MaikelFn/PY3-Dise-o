@@ -1,5 +1,6 @@
 const { sql, getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
+const { publicarEvento } = require('../events/pedido.events');
 
 function idValido(valor) {
   const numero = Number(valor);
@@ -128,9 +129,26 @@ async function aprobarPago(req, res) {
       .input('PagoID', sql.Int, pagoID)
       .execute('dbo.sp_Pagos_ConsultarPorID');
 
+    const pago = resultado.recordset[0];
+
+    if (pago) {
+      const pedidoResultado = await conexion.request()
+        .input('PedidoID', sql.Int, pago.PedidoID)
+        .execute('dbo.sp_Pedidos_ConsultarPorID');
+
+      const pedido = pedidoResultado.recordset[0];
+
+      if (pedido) {
+        await publicarEvento('pago.aprobado', {
+          usuarioID: pedido.UsuarioID,
+          pedidoID: pago.PedidoID
+        });
+      }
+    }
+
     return res.json({
       mensaje: 'Pago aprobado y pedido confirmado',
-      pago: resultado.recordset[0]
+      pago
     });
   } catch (error) {
     console.error(error);
@@ -156,9 +174,26 @@ async function rechazarPago(req, res) {
       .input('PagoID', sql.Int, pagoID)
       .execute('dbo.sp_Pagos_Rechazar');
 
+    const pago = resultado.recordset[0];
+
+    if (pago) {
+      const pedidoResultado = await conexion.request()
+        .input('PedidoID', sql.Int, pago.PedidoID)
+        .execute('dbo.sp_Pedidos_ConsultarPorID');
+
+      const pedido = pedidoResultado.recordset[0];
+
+      if (pedido) {
+        await publicarEvento('pago.rechazado', {
+          usuarioID: pedido.UsuarioID,
+          pedidoID: pago.PedidoID
+        });
+      }
+    }
+
     return res.json({
       mensaje: 'Pago rechazado correctamente',
-      pago: resultado.recordset[0]
+      pago
     });
   } catch (error) {
     console.error(error);
