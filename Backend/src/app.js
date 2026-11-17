@@ -20,6 +20,7 @@ const metodoPagoRoutes = require('./routes/metodoPago.routes');
 const pagoRoutes = require('./routes/pago.routes');
 const tipoEnvioRoutes = require('./routes/tipoEnvio.routes');
 const envioRoutes = require('./routes/envio.routes');
+const notificacionRoutes = require('./routes/notificacion.routes');
 
 const app = express();
 app.use(helmet());
@@ -59,6 +60,7 @@ app.use('/api/metodos-pago', metodoPagoRoutes);
 app.use('/api/pagos', pagoRoutes);
 app.use('/api/tipos-envio', tipoEnvioRoutes);
 app.use('/api/envios', envioRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 app.use((error, _req, res, _next) => {
   console.error('Error interno:', error);
