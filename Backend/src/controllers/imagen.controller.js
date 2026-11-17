@@ -24,14 +24,7 @@ function manejarError(res, error) {
 async function obtenerVendedor(conexion, usuarioID) {
   const resultado = await conexion.request()
     .input('UsuarioID', sql.Int, usuarioID)
-    .query(`
-      SELECT V.VendedorID
-      FROM dbo.Vendedores V
-      INNER JOIN dbo.Usuarios U ON U.UsuarioID = V.UsuarioID
-      WHERE V.UsuarioID = @UsuarioID
-        AND V.Activo = 1
-        AND U.Activo = 1
-    `);
+    .execute('dbo.sp_Vendedores_ObtenerPorUsuario');
 
   return resultado.recordset[0]?.VendedorID;
 }

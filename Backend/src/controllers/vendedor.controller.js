@@ -129,13 +129,7 @@ async function actualizarVendedor(req, res) {
     const propietario = await conexion.request()
       .input('VendedorID', sql.Int, id)
       .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .query(`
-        SELECT VendedorID
-        FROM dbo.Vendedores
-        WHERE VendedorID = @VendedorID
-          AND UsuarioID = @UsuarioID
-          AND Activo = 1
-      `);
+      .execute('dbo.sp_Vendedores_ValidarPropietario');
 
     if (!propietario.recordset.length) {
       return res.status(403).json({

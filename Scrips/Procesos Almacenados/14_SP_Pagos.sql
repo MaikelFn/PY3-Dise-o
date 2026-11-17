@@ -6,35 +6,67 @@ GO
 -- No se almacenan datos sensibles de tarjetas.
 CREATE OR ALTER PROCEDURE dbo.sp_Pagos_Registrar
     @PedidoID INT,
-    @MetodoPagoID INT
+    @MetodoPagoID INT,
+    @UsuarioID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
+
     BEGIN TRY
         BEGIN TRANSACTION;
+
         DECLARE @Monto DECIMAL(12,2);
+
         SELECT @Monto = P.Total
         FROM dbo.Pedidos P WITH (UPDLOCK, HOLDLOCK)
-        JOIN dbo.EstadosPedido E ON E.EstadoPedidoID = P.EstadoPedidoID
-        WHERE P.PedidoID = @PedidoID AND E.Nombre = 'Pendiente';
-        IF @Monto IS NULL THROW 51401, 'El pedido no existe o no esta pendiente.', 1;
+        INNER JOIN dbo.EstadosPedido E
+            ON E.EstadoPedidoID = P.EstadoPedidoID
+        WHERE P.PedidoID = @PedidoID
+          AND P.UsuarioID = @UsuarioID
+          AND E.Nombre = 'Pendiente';
 
-        IF NOT EXISTS (SELECT 1 FROM dbo.MetodosPago WHERE MetodoPagoID = @MetodoPagoID)
+        IF @Monto IS NULL
+            THROW 51401, 'El pedido no existe, no pertenece al usuario o no esta pendiente.', 1;
+
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.MetodosPago
+            WHERE MetodoPagoID = @MetodoPagoID
+        )
             THROW 51402, 'Metodo de pago inexistente.', 1;
 
-        IF EXISTS (SELECT 1 FROM dbo.Pagos WHERE PedidoID = @PedidoID AND Estado IN ('Pendiente', 'Aprobado'))
+        IF EXISTS (
+            SELECT 1
+            FROM dbo.Pagos
+            WHERE PedidoID = @PedidoID
+              AND Estado IN ('Pendiente', 'Aprobado')
+        )
             THROW 51403, 'Ya existe un pago pendiente o aprobado para este pedido.', 1;
 
-        INSERT INTO dbo.Pagos (PedidoID, MetodoPagoID, Monto, Estado)
-        VALUES (@PedidoID, @MetodoPagoID, @Monto, 'Pendiente');
+        INSERT INTO dbo.Pagos (
+            PedidoID,
+            MetodoPagoID,
+            Monto,
+            Estado
+        )
+        VALUES (
+            @PedidoID,
+            @MetodoPagoID,
+            @Monto,
+            'Pendiente'
+        );
+
         DECLARE @PagoID INT = CONVERT(INT, SCOPE_IDENTITY());
+
         COMMIT TRANSACTION;
-        SELECT PagoID, PedidoID, MetodoPagoID, Monto, Estado, FechaPago
-        FROM dbo.Pagos WHERE PagoID = @PagoID;
+
+        EXEC dbo.sp_Pagos_ConsultarPorID @PagoID;
     END TRY
     BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
         THROW;
     END CATCH;
 END;

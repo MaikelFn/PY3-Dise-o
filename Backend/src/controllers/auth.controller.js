@@ -26,15 +26,6 @@ async function registrarUsuario(req, res) {
 
     const conexion = await getPool();
 
-    const rol = await conexion.request()
-      .query("SELECT RolID FROM dbo.Roles WHERE Nombre = 'Comprador'");
-
-    if (!rol.recordset.length) {
-      return res.status(500).json({
-        mensaje: 'Rol Comprador no encontrado'
-      });
-    }
-
     const hash = await bcrypt.hash(contrasena, 10);
 
     const resultado = await conexion.request()
@@ -42,7 +33,6 @@ async function registrarUsuario(req, res) {
       .input('Apellido', sql.NVarChar(100), apellido.trim())
       .input('Correo', sql.NVarChar(150), correo.trim())
       .input('ContrasenaHash', sql.NVarChar(255), hash)
-      .input('RolID', sql.Int, rol.recordset[0].RolID)
       .execute('dbo.sp_Usuarios_Registrar');
 
     return res.status(201).json({
