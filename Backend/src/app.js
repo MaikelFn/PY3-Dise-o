@@ -12,6 +12,9 @@ const imagenRoutes = require('./routes/imagen.routes');
 const inventarioRoutes = require('./routes/inventario.routes');
 const carritoRoutes = require('./routes/carrito.routes');
 const detalleCarritoRoutes = require('./routes/detalleCarrito.routes');
+const estadoPedidoRoutes = require('./routes/estadoPedido.routes');
+const pedidoRoutes = require('./routes/pedido.routes');
+const detallePedidoRoutes = require('./routes/detallePedido.routes');
 
 const app = express();
 app.use(helmet());
@@ -40,6 +43,9 @@ app.use('/api', imagenRoutes);
 app.use('/api', inventarioRoutes);
 app.use('/api/carrito', carritoRoutes);
 app.use('/api/carrito/detalles', detalleCarritoRoutes);
+app.use('/api/estados-pedido', estadoPedidoRoutes);
+app.use('/api/pedidos', detallePedidoRoutes);
+app.use('/api/pedidos', pedidoRoutes);
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 app.use((error, _req, res, _next) => {
   console.error('Error interno:', error);
