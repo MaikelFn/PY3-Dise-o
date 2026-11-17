@@ -48,6 +48,7 @@ BEGIN
 
     SELECT CategoriaID, Nombre, Descripcion
     FROM dbo.Categorias
+    WHERE Activa = 1
     ORDER BY Nombre;
 END;
 GO
