@@ -5,8 +5,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_Usuarios_Registrar
     @Nombre NVARCHAR(100),
     @Apellido NVARCHAR(100),
     @Correo NVARCHAR(150),
-    @ContrasenaHash NVARCHAR(255),
-    @RolID INT
+    @ContrasenaHash NVARCHAR(255)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -19,19 +18,21 @@ BEGIN
         THROW 50001, 'Los campos obligatorios no pueden estar vacios.', 1;
     END;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM dbo.Roles
-        WHERE RolID = @RolID
-    )
+    DECLARE @RolID INT;
+
+    SELECT @RolID = RolID
+    FROM dbo.Roles
+    WHERE Nombre = 'Comprador';
+
+    IF @RolID IS NULL
     BEGIN
-        THROW 50002, 'El rol indicado no existe.', 1;
+        THROW 50002, 'El rol Comprador no existe.', 1;
     END;
 
     IF EXISTS (
         SELECT 1
         FROM dbo.Usuarios
-        WHERE Correo = @Correo
+        WHERE Correo = TRIM(@Correo)
     )
     BEGIN
         THROW 50003, 'El correo ya esta registrado.', 1;
@@ -54,18 +55,7 @@ BEGIN
 
     DECLARE @UsuarioID INT = SCOPE_IDENTITY();
 
-    SELECT
-        U.UsuarioID,
-        U.Nombre,
-        U.Apellido,
-        U.Correo,
-        R.Nombre AS Rol,
-        U.FechaRegistro,
-        U.Activo
-    FROM dbo.Usuarios U
-    INNER JOIN dbo.Roles R
-        ON U.RolID = R.RolID
-    WHERE U.UsuarioID = @UsuarioID;
+    EXEC dbo.sp_Usuarios_ConsultarPorID @UsuarioID;
 END;
 GO
 

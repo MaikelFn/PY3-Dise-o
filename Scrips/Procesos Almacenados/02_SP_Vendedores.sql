@@ -94,3 +94,39 @@ BEGIN
     EXEC dbo.sp_Vendedores_ConsultarPorID @VendedorID;
 END;
 GO
+
+-- 6. Obtener el vendedor asociado a un usuario
+CREATE OR ALTER PROCEDURE dbo.sp_Vendedores_ObtenerPorUsuario
+  @UsuarioID INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  SELECT V.VendedorID
+  FROM dbo.Vendedores V
+  INNER JOIN dbo.Usuarios U
+    ON U.UsuarioID = V.UsuarioID
+  WHERE V.UsuarioID = @UsuarioID
+    AND V.Activo = 1
+    AND U.Activo = 1;
+END;
+GO
+
+-- 7. Validar que un vendedor pertenezca al usuario
+CREATE OR ALTER PROCEDURE dbo.sp_Vendedores_ValidarPropietario
+  @VendedorID INT,
+  @UsuarioID INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  SELECT V.VendedorID
+  FROM dbo.Vendedores V
+  INNER JOIN dbo.Usuarios U
+    ON U.UsuarioID = V.UsuarioID
+  WHERE V.VendedorID = @VendedorID
+    AND V.UsuarioID = @UsuarioID
+    AND V.Activo = 1
+    AND U.Activo = 1;
+END;
+GO

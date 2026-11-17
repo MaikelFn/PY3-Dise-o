@@ -48,15 +48,7 @@ async function agregarExistencias(req, res) {
 
     const vendedor = await conexion.request()
       .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .query(`
-        SELECT V.VendedorID
-        FROM dbo.Vendedores V
-        INNER JOIN dbo.Usuarios U
-          ON U.UsuarioID = V.UsuarioID
-        WHERE V.UsuarioID = @UsuarioID
-          AND V.Activo = 1
-          AND U.Activo = 1
-      `);
+      .execute('dbo.sp_Vendedores_ObtenerPorUsuario');
 
     if (!vendedor.recordset.length) {
       return res.status(403).json({

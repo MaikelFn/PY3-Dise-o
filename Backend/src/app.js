@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const session = require('express-session');
@@ -17,7 +18,6 @@ const inventarioRoutes = require('./routes/inventario.routes');
 const carritoRoutes = require('./routes/carrito.routes');
 const detalleCarritoRoutes = require('./routes/detalleCarrito.routes');
 
-
 const app = express();
 app.use(helmet());
 app.use(cors({
@@ -35,22 +35,6 @@ app.use(session({
     sameSite: 'lax'
   }
 }));
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'ClickMarket API' });
-});
-app.get('/api/health/db', async (_req, res) => {
-  try {
-    const conexion = await getPool();
-    const resultado = await conexion.request().query('SELECT DB_NAME() AS databaseName');
-    res.json({
-      status: 'ok',
-      database: resultado.recordset[0].databaseName
-    });
-  } catch (error) {
-    console.error('Error al comprobar SQL Server:', error);
-    res.status(503).json({ status: 'error', message: 'Base de datos no disponible' });
-  }
-});
 app.use('/api/auth', authRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/productos', productoRoutes);
@@ -64,7 +48,6 @@ app.use('/api', imagenRoutes);
 app.use('/api', inventarioRoutes);
 app.use('/api/carrito', carritoRoutes);
 app.use('/api/carrito/detalles', detalleCarritoRoutes);
-
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 app.use((error, _req, res, _next) => {
   console.error('Error interno:', error);

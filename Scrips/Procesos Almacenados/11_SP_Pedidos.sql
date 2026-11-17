@@ -303,3 +303,27 @@ BEGIN
     END CATCH;
 END;
 GO
+
+CREATE OR ALTER PROCEDURE dbo.sp_Pedidos_ValidarAcceso
+  @PedidoID INT,
+  @UsuarioID INT
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  SELECT P.PedidoID
+  FROM dbo.Pedidos AS P
+  WHERE P.PedidoID = @PedidoID
+    AND (
+      P.UsuarioID = @UsuarioID
+      OR EXISTS (
+        SELECT 1
+        FROM dbo.Usuarios AS U
+        INNER JOIN dbo.Roles AS R
+          ON R.RolID = U.RolID
+        WHERE U.UsuarioID = @UsuarioID
+          AND R.Nombre = 'Administrador'
+      )
+    );
+END;
+GO
