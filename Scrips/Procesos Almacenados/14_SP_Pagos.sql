@@ -20,8 +20,8 @@ BEGIN
         WHERE P.PedidoID = @PedidoID AND E.Nombre = 'Pendiente';
         IF @Monto IS NULL THROW 51401, 'El pedido no existe o no esta pendiente.', 1;
 
-        IF NOT EXISTS (SELECT 1 FROM dbo.MetodosPago WHERE MetodoPagoID = @MetodoPagoID AND Activo = 1)
-            THROW 51402, 'Metodo de pago inexistente o inactivo.', 1;
+        IF NOT EXISTS (SELECT 1 FROM dbo.MetodosPago WHERE MetodoPagoID = @MetodoPagoID)
+            THROW 51402, 'Metodo de pago inexistente.', 1;
 
         IF EXISTS (SELECT 1 FROM dbo.Pagos WHERE PedidoID = @PedidoID AND Estado IN ('Pendiente', 'Aprobado'))
             THROW 51403, 'Ya existe un pago pendiente o aprobado para este pedido.', 1;

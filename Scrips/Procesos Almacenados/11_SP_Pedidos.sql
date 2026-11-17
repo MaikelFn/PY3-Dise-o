@@ -35,10 +35,10 @@ BEGIN
 
         SELECT @CostoEnvio = CostoBase
         FROM dbo.TiposEnvio
-        WHERE TipoEnvioID = @TipoEnvioID AND Activo = 1;
+        WHERE TipoEnvioID = @TipoEnvioID;
 
         IF @CostoEnvio IS NULL
-            THROW 51103, 'Tipo de envio inexistente o inactivo.', 1;
+            THROW 51103, 'Tipo de envio inexistente.', 1;
 
         SELECT @EstadoPedidoID = EstadoPedidoID
         FROM dbo.EstadosPedido WHERE Nombre = 'Pendiente';
@@ -63,7 +63,7 @@ BEGIN
             JOIN dbo.Vendedores V ON V.VendedorID = P.VendedorID
             JOIN dbo.Categorias C ON C.CategoriaID = P.CategoriaID
             WHERE DC.CarritoID = @CarritoID
-              AND (P.Activo = 0 OR V.Activo = 0 OR C.Activa = 0)
+              AND (P.Activo = 0 OR V.Activo = 0)
         )
             THROW 51106, 'El carrito contiene productos no disponibles.', 1;
 

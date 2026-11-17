@@ -40,7 +40,7 @@ BEGIN
         INNER JOIN dbo.Vendedores V ON V.VendedorID = P.VendedorID
         INNER JOIN dbo.Categorias CA ON CA.CategoriaID = P.CategoriaID
         INNER JOIN dbo.Inventarios I ON I.ProductoID = P.ProductoID
-        WHERE P.ProductoID = @ProductoID AND P.Activo = 1 AND V.Activo = 1 AND CA.Activa = 1;
+        WHERE P.ProductoID = @ProductoID AND P.Activo = 1 AND V.Activo = 1;
         IF @Disponible IS NULL THROW 50803, 'Producto no disponible.', 1;
         SELECT @CarritoID = CarritoID FROM dbo.Carritos WITH (UPDLOCK, HOLDLOCK) WHERE UsuarioID = @UsuarioID;
         IF @CarritoID IS NULL
@@ -85,7 +85,7 @@ BEGIN
                    INNER JOIN dbo.Vendedores V ON V.VendedorID = P.VendedorID
                    INNER JOIN dbo.Categorias CA ON CA.CategoriaID = P.CategoriaID
                    WHERE I.ProductoID = @ProductoID AND I.CantidadDisponible >= @Cantidad
-                     AND P.Activo = 1 AND V.Activo = 1 AND CA.Activa = 1)
+                     AND P.Activo = 1 AND V.Activo = 1)
         THROW 50807, 'Producto inactivo o existencias insuficientes.', 1;
     UPDATE DC SET Cantidad = @Cantidad
     FROM dbo.DetallesCarrito DC
