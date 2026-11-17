@@ -6,6 +6,10 @@ const session = require('express-session');
 const authRoutes = require('./routes/auth.routes');
 const categoriaRoutes = require('./routes/categoria.routes');
 const productoRoutes = require('./routes/producto.routes');
+
+const carritoRoutes = require('./routes/carrito.routes');
+const { getPool } = require('./config/database');
+
 const rolRoutes = require('./routes/rol.routes');
 const vendedorRoutes = require('./routes/vendedor.routes');
 const direccionRoutes = require('./routes/direccion.routes');
@@ -39,13 +43,12 @@ app.use(session({
     sameSite: 'lax'
   }
 }));
-app.use(
-  '/imagenes',
-  express.static(path.join(__dirname, '../public'))
-);
 app.use('/api/auth', authRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/productos', productoRoutes);
+
+app.use('/api/carrito', carritoRoutes);
+
 app.use('/api/roles', rolRoutes);
 app.use('/api/vendedores', vendedorRoutes);
 app.use('/api/direcciones', direccionRoutes);

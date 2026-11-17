@@ -72,7 +72,11 @@ async function crearProducto(req, res) {
 
     const vendedor = await conexion.request()
       .input('UsuarioID', sql.Int, usuario.id)
-      .execute('dbo.sp_Vendedores_ObtenerPorUsuario');
+      .query(`
+        SELECT VendedorID
+        FROM dbo.Vendedores
+        WHERE UsuarioID = @UsuarioID AND Activo = 1
+      `);
 
     if (!vendedor.recordset.length) {
       return res.status(403).json({
@@ -147,7 +151,11 @@ async function actualizarProducto(req, res) {
     // Obtener el vendedor asociado al usuario autenticado
     const vendedor = await conexion.request()
       .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Vendedores_ObtenerPorUsuario');
+      .query(`
+        SELECT VendedorID
+        FROM dbo.Vendedores
+        WHERE UsuarioID = @UsuarioID AND Activo = 1
+      `);
 
     if (!vendedor.recordset.length) {
       return res.status(403).json({
@@ -209,7 +217,11 @@ async function desactivarProducto(req, res) {
 
     const vendedor = await conexion.request()
       .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Vendedores_ObtenerPorUsuario');
+      .query(`
+        SELECT VendedorID
+        FROM dbo.Vendedores
+        WHERE UsuarioID = @UsuarioID AND Activo = 1
+      `);
 
     if (!vendedor.recordset.length) {
       return res.status(403).json({

@@ -110,7 +110,8 @@ GO
 CREATE TABLE dbo.Categorias (
     CategoriaID INT IDENTITY(1,1) PRIMARY KEY,
     Nombre NVARCHAR(100) NOT NULL UNIQUE,
-    Descripcion NVARCHAR(300) NULL
+    Descripcion NVARCHAR(300) NULL,
+    Activa BIT NOT NULL DEFAULT 1
 );
 GO
 
@@ -323,7 +324,8 @@ GO
 CREATE TABLE dbo.MetodosPago (
     MetodoPagoID INT IDENTITY(1,1) PRIMARY KEY,
     Nombre NVARCHAR(50) NOT NULL UNIQUE,
-    Descripcion NVARCHAR(200) NULL
+    Descripcion NVARCHAR(200) NULL,
+    Activo BIT NOT NULL DEFAULT 1
 );
 GO
 
@@ -367,7 +369,8 @@ CREATE TABLE dbo.TiposEnvio (
     TipoEnvioID INT IDENTITY(1,1) PRIMARY KEY,
     Nombre NVARCHAR(50) NOT NULL UNIQUE,
     CostoBase DECIMAL(10,2) NOT NULL,
-    Descripcion NVARCHAR(200) NULL
+    Descripcion NVARCHAR(200) NULL,
+    Activo BIT NOT NULL DEFAULT 1
 );
 
 -- ============================================

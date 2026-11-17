@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+
+Backend/node_modules/
+Backend/.env
+Backend/*.log
+
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.env.local
+Frontend/*.log
