@@ -50,7 +50,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM dbo.Productos P
                    INNER JOIN dbo.Vendedores V ON V.VendedorID = P.VendedorID
                    INNER JOIN dbo.Categorias C ON C.CategoriaID = P.CategoriaID
-                   WHERE P.ProductoID = @ProductoID AND P.Activo = 1 AND V.Activo = 1 AND C.Activa = 1)
+                   WHERE P.ProductoID = @ProductoID AND P.Activo = 1 AND V.Activo = 1)
         THROW 50605, 'El producto no esta disponible para la venta.', 1;
     UPDATE dbo.Inventarios WITH (UPDLOCK)
     SET CantidadDisponible = CantidadDisponible - @Cantidad,

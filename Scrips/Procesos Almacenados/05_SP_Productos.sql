@@ -41,8 +41,8 @@ BEGIN
                    WHERE V.VendedorID = @VendedorID AND V.Activo = 1
                      AND (V.EsClickMarket = 1 OR U.Activo = 1))
         THROW 50403, 'El vendedor no existe o esta inactivo.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.Categorias WHERE CategoriaID = @CategoriaID AND Activa = 1)
-        THROW 50404, 'La categoria no existe o esta inactiva.', 1;
+    IF NOT EXISTS (SELECT 1 FROM dbo.Categorias WHERE CategoriaID = @CategoriaID)
+        THROW 50404, 'La categoria no existe.', 1;
 
     DECLARE @ProductoID INT;
     BEGIN TRY
@@ -84,7 +84,7 @@ BEGIN
     WHERE (@CategoriaID IS NULL OR P.CategoriaID = @CategoriaID)
       AND (@VendedorID IS NULL OR P.VendedorID = @VendedorID)
       AND (@Busqueda IS NULL OR P.Nombre LIKE N'%' + @Busqueda + N'%')
-      AND (@SoloActivos = 0 OR (P.Activo = 1 AND V.Activo = 1 AND C.Activa = 1))
+      AND (@SoloActivos = 0 OR (P.Activo = 1 AND V.Activo = 1))
     ORDER BY P.FechaCreacion DESC, P.ProductoID DESC;
 END;
 GO
@@ -105,8 +105,8 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM dbo.Productos WHERE ProductoID = @ProductoID
                    AND VendedorID = @VendedorID AND Activo = 1)
         THROW 50407, 'El producto no existe, esta inactivo o no pertenece al vendedor.', 1;
-    IF NOT EXISTS (SELECT 1 FROM dbo.Categorias WHERE CategoriaID = @CategoriaID AND Activa = 1)
-        THROW 50408, 'La categoria no existe o esta inactiva.', 1;
+    IF NOT EXISTS (SELECT 1 FROM dbo.Categorias WHERE CategoriaID = @CategoriaID)
+        THROW 50408, 'La categoria no existe.', 1;
     UPDATE dbo.Productos
     SET CategoriaID = @CategoriaID, Nombre = @Nombre,
         Descripcion = @Descripcion, Precio = @Precio
