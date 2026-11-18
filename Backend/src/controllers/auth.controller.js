@@ -1,9 +1,7 @@
-
 const bcrypt = require('bcrypt');
-const { sql, getPool } = require('../config/database');
+const { getPool } = require('../config/database');
 const { promisify } = require('util');
 
-// Registrar usuario
 async function registrarUsuario(req, res) {
   try {
     const { nombre, apellido, correo, contrasena } = req.body;
@@ -16,52 +14,80 @@ async function registrarUsuario(req, res) {
       });
     }
 
-    if (nombre.length > 100 || apellido.length > 100 ||
-        correo.length > 150 || contrasena.length < 8 ||
-        contrasena.length > 72) {
+    if (
+      nombre.length > 100 ||
+      apellido.length > 100 ||
+      correo.length > 150 ||
+      contrasena.length < 8 ||
+      contrasena.length > 72
+    ) {
       return res.status(400).json({
         mensaje: 'Datos de registro inválidos'
       });
     }
 
     const conexion = await getPool();
-
     const hash = await bcrypt.hash(contrasena, 10);
 
-    const resultado = await conexion.request()
-      .input('Nombre', sql.NVarChar(100), nombre.trim())
-      .input('Apellido', sql.NVarChar(100), apellido.trim())
-      .input('Correo', sql.NVarChar(150), correo.trim())
-      .input('ContrasenaHash', sql.NVarChar(255), hash)
-      .execute('dbo.sp_Usuarios_Registrar');
+    const resultado = await conexion.query(
+      `SELECT *
+       FROM public.sp_usuarios_registrar($1, $2, $3, $4)`,
+      [
+        nombre.trim(),
+        apellido.trim(),
+        correo.trim(),
+        hash
+      ]
+    );
+
+    const usuario = resultado.rows[0];
+
+    if (!usuario) {
+      throw new Error('La funcion de registro no devolvio un usuario');
+    }
 
     return res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
-      usuario: resultado.recordset[0]
+      usuario: {
+        UsuarioID: usuario.usuarioid,
+        Nombre: usuario.nombre,
+        Apellido: usuario.apellido,
+        Correo: usuario.correo,
+        RolID: usuario.rolid,
+        Rol: usuario.rol,
+        FechaRegistro: usuario.fecharegistro,
+        Activo: usuario.activo
+      }
     });
 
   } catch (error) {
-    if ([50003, 2601, 2627].includes(error.number)) {
+    if (
+      error.code === '23505' ||
+      error.message?.includes('correo ya')
+    ) {
       return res.status(409).json({
         mensaje: 'El correo ya está registrado'
       });
     }
 
-    console.error(error);
+    console.error('Error al registrar usuario:', error);
+
     return res.status(500).json({
       mensaje: 'Error al registrar usuario'
     });
   }
 }
 
-// Iniciar sesión
 async function iniciarSesion(req, res) {
   try {
     const { correo, contrasena } = req.body;
 
-    if (typeof correo !== 'string' ||
-        typeof contrasena !== 'string' ||
-        !correo.trim() || !contrasena) {
+    if (
+      typeof correo !== 'string' ||
+      typeof contrasena !== 'string' ||
+      !correo.trim() ||
+      !contrasena
+    ) {
       return res.status(400).json({
         mensaje: 'Correo y contraseña son obligatorios'
       });
@@ -69,14 +95,20 @@ async function iniciarSesion(req, res) {
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('Correo', sql.NVarChar(150), correo.trim())
-      .execute('dbo.sp_Usuarios_ConsultarPorCorreo');
+    const resultado = await conexion.query(
+      `SELECT *
+       FROM public.sp_usuarios_consultarporcorreo($1)`,
+      [correo.trim()]
+    );
 
-    const usuario = resultado.recordset[0];
+    const usuario = resultado.rows[0];
 
-    if (!usuario || !usuario.Activo ||
-        !await bcrypt.compare(contrasena, usuario.ContrasenaHash)) {
+    if (
+      !usuario ||
+      usuario.activo !== true ||
+      typeof usuario.contrasenahash !== 'string' ||
+      !(await bcrypt.compare(contrasena, usuario.contrasenahash))
+    ) {
       return res.status(401).json({
         mensaje: 'Credenciales incorrectas'
       });
@@ -85,11 +117,11 @@ async function iniciarSesion(req, res) {
     await promisify(req.session.regenerate).call(req.session);
 
     req.session.usuario = {
-      id: usuario.UsuarioID,
-      nombre: usuario.Nombre,
-      apellido: usuario.Apellido,
-      correo: usuario.Correo,
-      rol: usuario.Rol
+      id: usuario.usuarioid,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      correo: usuario.correo,
+      rol: usuario.rol
     };
 
     await promisify(req.session.save).call(req.session);
@@ -100,14 +132,14 @@ async function iniciarSesion(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error('Error al iniciar sesión:', error);
+
     return res.status(500).json({
       mensaje: 'Error al iniciar sesión'
     });
   }
 }
 
-// Consultar sesión
 function obtenerSesion(req, res) {
   if (!req.session?.usuario) {
     return res.status(401).json({
@@ -120,7 +152,6 @@ function obtenerSesion(req, res) {
   });
 }
 
-// Cerrar sesión
 async function cerrarSesion(req, res) {
   if (!req.session?.usuario) {
     return res.status(401).json({
@@ -138,7 +169,8 @@ async function cerrarSesion(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error('Error al cerrar sesión:', error);
+
     return res.status(500).json({
       mensaje: 'Error al cerrar sesión'
     });

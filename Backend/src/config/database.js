@@ -1,41 +1,42 @@
+const { Pool } = require('pg');
 
-const sql = require('mssql');
-
-function booleanFromEnv(value, fallback) {
-  if (value == null || value === '') return fallback;
-  return value.toLowerCase() === 'true';
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'Falta configurar DATABASE_URL en el archivo .env'
+  );
 }
 
-const config = {
-  server: process.env.DB_SERVER,
-  port: Number(process.env.DB_PORT || 1433),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  options: {
-    encrypt: booleanFromEnv(process.env.DB_ENCRYPT, false),
-    trustServerCertificate: booleanFromEnv(
-      process.env.DB_TRUST_SERVER_CERTIFICATE,
-      true
-    )
-  }
-};
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
+});
 
-const pool = new sql.ConnectionPool(config);
-let poolPromise;
+pool.on('error', (error) => {
+  console.error(
+    'Error inesperado en una conexion inactiva de PostgreSQL:',
+    error
+  );
+});
 
 async function getPool() {
-  if (pool.connected) return pool;
-
-  if (!poolPromise) {
-    poolPromise = pool.connect().catch((error) => {
-      poolPromise = undefined;
-      throw error;
-    });
-  }
-
-  await poolPromise;
   return pool;
 }
 
-module.exports = { sql, getPool };
+async function probarConexion() {
+  const resultado = await pool.query(`
+    SELECT
+      current_database() AS base_datos,
+      current_schema() AS esquema,
+      version() AS version_postgresql
+  `);
+
+  return resultado.rows[0];
+}
+
+module.exports = {
+  pool,
+  getPool,
+  probarConexion
+};
