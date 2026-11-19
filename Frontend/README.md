@@ -1,16 +1,47 @@
-# React + Vite
+# ClickMarket Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interfaz de tienda construida con React y Vite. El catálogo, las categorías, la sesión y el carrito consultan la API existente; las pantallas de comprador, vendedor y administrador se determinan por el rol devuelto por la sesión.
 
-Currently, two official plugins are available:
+## Desarrollo local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Configura las variables privadas requeridas por el backend en `Backend/.env`. No copies credenciales al frontend ni las publiques.
 
-## React Compiler
+En una terminal:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+cd Backend
+npm install
+npm run dev
+```
 
-## Expanding the Oxlint configuration
+En otra terminal:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```powershell
+cd Frontend
+npm install
+npm run dev
+```
+
+Vite lee únicamente el puerto `PORT` de `Backend/.env` para dirigir las solicitudes de `/api` e `/imagenes` al servidor local; si no está definido, usa el puerto `3000`. Las solicitudes del navegador conservan la cookie de sesión.
+
+Para desplegar el frontend en otro origen, configura `VITE_API_URL` con la URL base de la API que incluya `/api`, y permite ese origen en la configuración existente del backend.
+
+## Funcionalidad conectada
+
+- Registro e inicio/cierre de sesión con cookie de sesión.
+- Catálogo y categorías consultados desde la API.
+- Carrito y checkout con selección o creación de dirección; los pedidos se registran pendientes, reservan existencias y no procesan pagos reales.
+- Panel de comprador con perfil y pedidos.
+- Panel de vendedor con publicación de productos (incluye imagen e inventario) y consulta de pedidos de su tienda.
+- Panel de administrador con consulta del catálogo, mantenimiento de categorías y listado global de pedidos.
+
+Las imágenes de productos se guardan en el almacenamiento local del backend. En despliegues, `Backend/public/productos` debe montarse en almacenamiento persistente.
+
+El backend actual no expone operaciones para persistir favoritos, calificaciones u ofertas, ni listados globales de usuarios. Esas secciones no se simulan como información real.
+
+## Validación
+
+```powershell
+npm run lint
+npm run build
+```

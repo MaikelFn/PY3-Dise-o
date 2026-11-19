@@ -12,9 +12,19 @@ const { verificarAccesoPedido } = pedido;
 
 router.use(verificarSesion);
 
+router.get(
+  '/administracion',
+  verificarRol('Administrador'),
+  pedido.listarPedidosAdministrador
+);
+router.get(
+  '/vendedor',
+  verificarRol('Vendedor'),
+  pedido.listarPedidosVendedor
+);
 router.get('/', pedido.listarPedidos);
 router.get('/:id', pedido.consultarPedido);
-router.post('/', pedido.crearPedido);
+router.post('/', verificarRol('Comprador'), pedido.crearPedido);
 
 router.post(
   '/:id/confirmar',

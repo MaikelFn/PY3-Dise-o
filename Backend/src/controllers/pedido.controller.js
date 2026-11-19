@@ -63,8 +63,9 @@ async function crearPedido(req, res) {
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al crear pedido'
+    const isValidationError = ['P0001', '23503', '23514', '22003'].includes(error.code);
+    return res.status(isValidationError ? 400 : 500).json({
+      mensaje: isValidationError ? error.message : 'Error al crear pedido'
     });
   }
 }
@@ -129,9 +130,9 @@ async function listarPedidos(req, res) {
       PedidoID: p.pedidoid,
       UsuarioID: p.usuarioid,
       DireccionID: p.direccionid,
-      TipoEnvioID: p.tipoenvioid,
-      EstadoPedidoID: p.estadopedidoid,
+      Estado: p.estadopedido,
       FechaPedido: p.fechapedido,
+      Subtotal: p.subtotal,
       Total: p.total
     })));
 
@@ -139,6 +140,53 @@ async function listarPedidos(req, res) {
     console.error(error);
     return res.status(500).json({
       mensaje: 'Error al listar pedidos'
+    });
+  }
+}
+
+async function listarPedidosAdministrador(_req, res) {
+  try {
+    const conexion = await getPool();
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_listaradmin()'
+    );
+
+    return res.json(resultado.rows.map(p => ({
+      PedidoID: p.pedidoid,
+      FechaPedido: p.fechapedido,
+      Estado: p.estado,
+      Comprador: p.comprador,
+      CantidadProductos: p.cantidadproductos,
+      Total: p.total
+    })));
+  } catch (error) {
+    console.error('Error al listar pedidos para administración:', error);
+    return res.status(500).json({
+      mensaje: 'Error al listar pedidos para administración'
+    });
+  }
+}
+
+async function listarPedidosVendedor(req, res) {
+  try {
+    const conexion = await getPool();
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_listarporvendedor($1)',
+      [req.session.usuario.id]
+    );
+
+    return res.json(resultado.rows.map(p => ({
+      PedidoID: p.pedidoid,
+      FechaPedido: p.fechapedido,
+      Estado: p.estado,
+      Comprador: p.comprador,
+      CantidadProductos: p.cantidadproductos,
+      SubtotalVendedor: p.subtotalvendedor
+    })));
+  } catch (error) {
+    console.error('Error al listar ventas del vendedor:', error);
+    return res.status(500).json({
+      mensaje: 'Error al listar ventas de la tienda'
     });
   }
 }
@@ -224,6 +272,8 @@ module.exports = {
   crearPedido,
   consultarPedido,
   listarPedidos,
+  listarPedidosAdministrador,
+  listarPedidosVendedor,
   confirmarPedido,
   cancelarPedido,
   usuarioPuedeVerPedido,

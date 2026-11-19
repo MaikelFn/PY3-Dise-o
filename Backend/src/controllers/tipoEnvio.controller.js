@@ -13,7 +13,7 @@ async function listarTiposEnvio(req, res) {
       TipoEnvioID: t.tipoenvioid,
       Nombre: t.nombre,
       Descripcion: t.descripcion,
-      Costo: t.costo
+      Costo: t.costobase
     }));
 
     return res.json(tiposEnvio);

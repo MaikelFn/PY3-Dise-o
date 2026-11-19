@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { login, logout, register } from '../api'
 
-function AuthDialog({ user, onAuthenticated, onLoggedOut, onClose }) {
+function AuthDialog({ user, onAuthenticated, onLoggedOut, onOpenDashboard, onClose }) {
   const dialogRef = useRef(null)
   const [mode, setMode] = useState('login')
   const [error, setError] = useState('')
@@ -89,6 +89,8 @@ function AuthDialog({ user, onAuthenticated, onLoggedOut, onClose }) {
           <div className="account-avatar" aria-hidden="true">{user.nombre?.charAt(0)?.toUpperCase() || 'U'}</div>
           <strong>{user.nombre} {user.apellido}</strong>
           <span>{user.correo}</span>
+          <span>{user.rol}</span>
+          <button className="dialog-primary" type="button" onClick={onOpenDashboard}>Ir a mi panel</button>
           <button className="dialog-primary" type="button" onClick={handleLogout} disabled={busy}>
             {busy ? 'Cerrando sesión…' : 'Cerrar sesión'}
           </button>
@@ -114,6 +116,7 @@ function AuthDialog({ user, onAuthenticated, onLoggedOut, onClose }) {
               required
             />
           </label>
+          {mode === 'register' && <p className="dialog-notice">El rol de la cuenta lo asigna el servidor. Inicia sesión para abrir el panel correspondiente.</p>}
           {notice && <p className="dialog-notice" role="status">{notice}</p>}
           {error && <p className="dialog-error" role="alert">{error}</p>}
           <button className="dialog-primary" type="submit" disabled={busy}>
