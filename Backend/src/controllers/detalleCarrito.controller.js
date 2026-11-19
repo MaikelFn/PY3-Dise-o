@@ -25,13 +25,6 @@ async function agregarDetalle(req, res) {
   try {
     const { productoID, cantidad } = req.body;
 
-    if (!Number.isInteger(productoID) || productoID <= 0 ||
-        !Number.isInteger(cantidad) || cantidad <= 0) {
-      return res.status(400).json({
-        mensaje: 'Producto o cantidad inválida'
-      });
-    }
-
     const conexion = await getPool();
 
     const resultado = await conexion.query(
@@ -58,13 +51,6 @@ async function actualizarCantidad(req, res) {
     const productoID = Number(req.params.productoID);
     const { cantidad } = req.body;
 
-    if (!Number.isInteger(productoID) || productoID <= 0 ||
-        !Number.isInteger(cantidad) || cantidad <= 0) {
-      return res.status(400).json({
-        mensaje: 'Producto o cantidad inválida'
-      });
-    }
-
     const conexion = await getPool();
 
     const resultado = await conexion.query(
@@ -89,12 +75,6 @@ async function actualizarCantidad(req, res) {
 async function eliminarDetalle(req, res) {
   try {
     const productoID = Number(req.params.productoID);
-
-    if (!Number.isInteger(productoID) || productoID <= 0) {
-      return res.status(400).json({
-        mensaje: 'ID de producto inválido'
-      });
-    }
 
     const conexion = await getPool();
 

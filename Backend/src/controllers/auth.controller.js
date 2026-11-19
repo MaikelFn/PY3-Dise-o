@@ -6,26 +6,6 @@ async function registrarUsuario(req, res) {
   try {
     const { nombre, apellido, correo, contrasena } = req.body;
 
-    if ([nombre, apellido, correo, contrasena].some(
-      valor => typeof valor !== 'string' || !valor.trim()
-    )) {
-      return res.status(400).json({
-        mensaje: 'Todos los campos son obligatorios'
-      });
-    }
-
-    if (
-      nombre.length > 100 ||
-      apellido.length > 100 ||
-      correo.length > 150 ||
-      contrasena.length < 8 ||
-      contrasena.length > 72
-    ) {
-      return res.status(400).json({
-        mensaje: 'Datos de registro inválidos'
-      });
-    }
-
     const conexion = await getPool();
     const hash = await bcrypt.hash(contrasena, 10);
 
@@ -81,17 +61,6 @@ async function registrarUsuario(req, res) {
 async function iniciarSesion(req, res) {
   try {
     const { correo, contrasena } = req.body;
-
-    if (
-      typeof correo !== 'string' ||
-      typeof contrasena !== 'string' ||
-      !correo.trim() ||
-      !contrasena
-    ) {
-      return res.status(400).json({
-        mensaje: 'Correo y contraseña son obligatorios'
-      });
-    }
 
     const conexion = await getPool();
 

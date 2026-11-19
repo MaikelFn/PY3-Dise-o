@@ -1,19 +1,10 @@
-const { sql, getPool } = require('../config/database');
+
+const { getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 
 async function listarDetallesPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
-
-    if (
-      !Number.isSafeInteger(pedidoID) ||
-      pedidoID <= 0 ||
-      pedidoID > 2147483647
-    ) {
-      return res.status(400).json({
-        mensaje: 'ID de pedido inválido'
-      });
-    }
 
     const conexion = await getPool();
 
@@ -25,11 +16,22 @@ async function listarDetallesPedido(req, res) {
       });
     }
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .execute('dbo.sp_DetallesPedido_ListarPorPedido');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_detallespedido_listarporpedido($1)',
+      [pedidoID]
+    );
 
-    return res.json(resultado.recordset);
+    const detalles = resultado.rows.map(d => ({
+      DetallePedidoID: d.detallepedidoid,
+      PedidoID: d.pedidoid,
+      ProductoID: d.productoid,
+      Cantidad: d.cantidad,
+      PrecioUnitario: d.preciounitario,
+      Subtotal: d.subtotal
+    }));
+
+    return res.json(detalles);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({

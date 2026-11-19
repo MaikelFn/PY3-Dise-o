@@ -1,44 +1,21 @@
-const { sql, getPool } = require('../config/database');
+
+const { getPool } = require('../config/database');
 const { publicarEvento } = require('../events/pedido.events');
 
-function manejarError(res, error) {
-  console.error(error);
-
-  if (error.number >= 51100 && error.number < 51200) {
-    return res.status(400).json({
-      mensaje: error.message
-    });
-  }
-
-  return res.status(500).json({
-    mensaje: 'Error al procesar pedido'
-  });
-}
-
-function validarID(id) {
-  return Number.isSafeInteger(id) && id > 0 && id <= 2147483647;
-}
-
+// Verificar acceso al pedido
 async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
-  const resultado = await conexion.request()
-    .input('PedidoID', sql.Int, pedidoID)
-    .input('UsuarioID', sql.Int, usuario.id)
-    .execute('dbo.sp_Pedidos_ValidarAcceso');
+  const resultado = await conexion.query(
+    'SELECT * FROM public.sp_pedidos_validaracceso($1, $2)',
+    [pedidoID, usuario.id]
+  );
 
-  return resultado.recordset.length > 0;
+  return resultado.rows.length > 0;
 }
 
-// Para rutas donde :id es el PedidoID (ej. /api/pedidos/:id/pagos).
-// Debe ejecutarse despues de verificarSesion.
+// Middleware de acceso
 async function verificarAccesoPedido(req, res, next) {
   try {
     const pedidoID = Number(req.params.id);
-
-    if (!validarID(pedidoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pedido inválido'
-      });
-    }
 
     const conexion = await getPool();
 
@@ -51,6 +28,7 @@ async function verificarAccesoPedido(req, res, next) {
     }
 
     next();
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -59,25 +37,19 @@ async function verificarAccesoPedido(req, res, next) {
   }
 }
 
+// Crear pedido
 async function crearPedido(req, res) {
   try {
     const { direccionID, tipoEnvioID } = req.body;
 
-    if (!validarID(direccionID) || !validarID(tipoEnvioID)) {
-      return res.status(400).json({
-        mensaje: 'Dirección o tipo de envío inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('DireccionID', sql.Int, direccionID)
-      .input('TipoEnvioID', sql.Int, tipoEnvioID)
-      .execute('dbo.sp_Pedidos_CrearDesdeCarrito');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_creardesdecarrito($1, $2, $3)',
+      [req.session.usuario.id, direccionID, tipoEnvioID]
+    );
 
-    const pedidoID = resultado.recordset[0].PedidoID;
+    const pedidoID = resultado.rows[0].pedidoid;
 
     await publicarEvento('pedido.creado', {
       usuarioID: req.session.usuario.id,
@@ -88,21 +60,20 @@ async function crearPedido(req, res) {
       mensaje: 'Pedido creado e inventario reservado',
       pedidoID
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al crear pedido'
+    });
   }
 }
 
+// Consultar pedido
 async function consultarPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
 
-    if (!validarID(pedidoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pedido inválido'
-      });
-    }
-
     const conexion = await getPool();
 
     if (!await usuarioPuedeVerPedido(
@@ -113,64 +84,101 @@ async function consultarPedido(req, res) {
       });
     }
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .execute('dbo.sp_Pedidos_ConsultarPorID');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_consultarporid($1)',
+      [pedidoID]
+    );
 
-    return res.json(resultado.recordset[0]);
+    const p = resultado.rows[0];
+
+    if (!p) {
+      return res.status(404).json({
+        mensaje: 'Pedido no encontrado'
+      });
+    }
+
+    return res.json({
+      PedidoID: p.pedidoid,
+      UsuarioID: p.usuarioid,
+      DireccionID: p.direccionid,
+      TipoEnvioID: p.tipoenvioid,
+      EstadoPedidoID: p.estadopedidoid,
+      FechaPedido: p.fechapedido,
+      Total: p.total
+    });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al consultar pedido'
+    });
   }
 }
 
+// Listar pedidos
 async function listarPedidos(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Pedidos_ListarPorUsuario');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_listarporusuario($1)',
+      [req.session.usuario.id]
+    );
 
-    return res.json(resultado.recordset);
+    return res.json(resultado.rows.map(p => ({
+      PedidoID: p.pedidoid,
+      UsuarioID: p.usuarioid,
+      DireccionID: p.direccionid,
+      TipoEnvioID: p.tipoenvioid,
+      EstadoPedidoID: p.estadopedidoid,
+      FechaPedido: p.fechapedido,
+      Total: p.total
+    })));
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al listar pedidos'
+    });
   }
 }
 
+// Confirmar pedido
 async function confirmarPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
 
-    if (!validarID(pedidoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pedido inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .execute('dbo.sp_Pedidos_Confirmar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_confirmar($1)',
+      [pedidoID]
+    );
+
+    const p = resultado.rows[0];
 
     return res.json({
       mensaje: 'Pedido confirmado correctamente',
-      pedido: resultado.recordset[0]
+      pedido: {
+        PedidoID: p.pedidoid,
+        UsuarioID: p.usuarioid,
+        EstadoPedidoID: p.estadopedidoid,
+        Total: p.total
+      }
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al confirmar pedido'
+    });
   }
 }
 
+// Cancelar pedido
 async function cancelarPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
-
-    if (!validarID(pedidoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pedido inválido'
-      });
-    }
 
     const conexion = await getPool();
 
@@ -182,23 +190,33 @@ async function cancelarPedido(req, res) {
       });
     }
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .execute('dbo.sp_Pedidos_Cancelar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pedidos_cancelar($1)',
+      [pedidoID]
+    );
 
-    const pedidoCancelado = resultado.recordset[0];
+    const p = resultado.rows[0];
 
     await publicarEvento('pedido.cancelado', {
-      usuarioID: pedidoCancelado.UsuarioID,
+      usuarioID: p.usuarioid,
       pedidoID
     });
 
     return res.json({
       mensaje: 'Pedido cancelado e inventario liberado',
-      pedido: pedidoCancelado
+      pedido: {
+        PedidoID: p.pedidoid,
+        UsuarioID: p.usuarioid,
+        EstadoPedidoID: p.estadopedidoid,
+        Total: p.total
+      }
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al cancelar pedido'
+    });
   }
 }
 
