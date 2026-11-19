@@ -1,14 +1,21 @@
-const { sql, getPool } = require('../config/database');
+const { getPool } = require('../config/database');
 
 // Listar categorías
 async function listarCategorias(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .execute('dbo.sp_Categorias_Listar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_categorias_listar()'
+    );
 
-    return res.json(resultado.recordset);
+    const categorias = resultado.rows.map(c => ({
+      CategoriaID: c.categoriaid,
+      Nombre: c.nombre,
+      Descripcion: c.descripcion
+    }));
+
+    return res.json(categorias);
 
   } catch (error) {
     console.error(error);
@@ -21,19 +28,28 @@ async function listarCategorias(req, res) {
 // Consultar categoría
 async function consultarCategoria(req, res) {
   try {
+    const categoriaID = Number(req.params.id);
+
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('CategoriaID', sql.Int, req.params.id)
-      .execute('dbo.sp_Categorias_ConsultarPorID');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_categorias_consultarporid($1)',
+      [categoriaID]
+    );
 
-    if (!resultado.recordset.length) {
+    if (!resultado.rows.length) {
       return res.status(404).json({
         mensaje: 'Categoría no encontrada'
       });
     }
 
-    return res.json(resultado.recordset[0]);
+    const c = resultado.rows[0];
+
+    return res.json({
+      CategoriaID: c.categoriaid,
+      Nombre: c.nombre,
+      Descripcion: c.descripcion
+    });
 
   } catch (error) {
     console.error(error);
@@ -48,29 +64,26 @@ async function crearCategoria(req, res) {
   try {
     const { nombre, descripcion } = req.body;
 
-    if (typeof nombre !== 'string' || !nombre.trim() ||
-        nombre.length > 100 ||
-        (descripcion != null &&
-         (typeof descripcion !== 'string' || descripcion.length > 300))) {
-      return res.status(400).json({
-        mensaje: 'Datos de categoría inválidos'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('Nombre', sql.NVarChar(100), nombre.trim())
-      .input('Descripcion', sql.NVarChar(300), descripcion ?? null)
-      .execute('dbo.sp_Categorias_Crear');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_categorias_crear($1, $2)',
+      [nombre.trim(), descripcion ?? null]
+    );
+
+    const c = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Categoría creada correctamente',
-      categoria: resultado.recordset[0]
+      categoria: {
+        CategoriaID: c.categoriaid,
+        Nombre: c.nombre,
+        Descripcion: c.descripcion
+      }
     });
 
   } catch (error) {
-    if ([50302, 2601, 2627].includes(error.number)) {
+    if (error.code === '23505') {
       return res.status(409).json({
         mensaje: 'Ya existe una categoría con ese nombre'
       });
@@ -86,38 +99,29 @@ async function crearCategoria(req, res) {
 // Actualizar categoría
 async function actualizarCategoria(req, res) {
   try {
+    const categoriaID = Number(req.params.id);
     const { nombre, descripcion } = req.body;
-
-    if (typeof nombre !== 'string' || !nombre.trim() ||
-        nombre.length > 100 ||
-        (descripcion != null &&
-         (typeof descripcion !== 'string' || descripcion.length > 300))) {
-      return res.status(400).json({
-        mensaje: 'Datos de categoría inválidos'
-      });
-    }
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('CategoriaID', sql.Int, req.params.id)
-      .input('Nombre', sql.NVarChar(100), nombre.trim())
-      .input('Descripcion', sql.NVarChar(300), descripcion ?? null)
-      .execute('dbo.sp_Categorias_Actualizar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_categorias_actualizar($1, $2, $3)',
+      [categoriaID, nombre.trim(), descripcion ?? null]
+    );
+
+    const c = resultado.rows[0];
 
     return res.json({
       mensaje: 'Categoría actualizada correctamente',
-      categoria: resultado.recordset[0]
+      categoria: {
+        CategoriaID: c.categoriaid,
+        Nombre: c.nombre,
+        Descripcion: c.descripcion
+      }
     });
 
   } catch (error) {
-    if (error.number === 50304) {
-      return res.status(404).json({
-        mensaje: 'Categoría no encontrada'
-      });
-    }
-
-    if ([50305, 2601, 2627].includes(error.number)) {
+    if (error.code === '23505') {
       return res.status(409).json({
         mensaje: 'Ya existe una categoría con ese nombre'
       });

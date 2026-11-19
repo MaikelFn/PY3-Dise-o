@@ -1,42 +1,40 @@
-const { sql, getPool } = require('../config/database');
+
+const { getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
 
-function idValido(valor) {
-  const numero = Number(valor);
-
-  return Number.isSafeInteger(numero) &&
-    numero > 0 &&
-    numero <= 2147483647;
-}
-
+// Consultar envío
 async function consultarEnvio(req, res) {
   try {
     const envioID = Number(req.params.id);
 
-    if (!idValido(envioID)) {
-      return res.status(400).json({
-        mensaje: 'ID de envío inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('EnvioID', sql.Int, envioID)
-      .execute('dbo.sp_Envios_ConsultarPorID');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_envios_consultarporid($1)',
+      [envioID]
+    );
 
-    const envio = resultado.recordset[0];
+    const envio = resultado.rows[0];
 
     if (!envio || !await usuarioPuedeVerPedido(
-      conexion, envio.PedidoID, req.session.usuario
+      conexion, envio.pedidoid, req.session.usuario
     )) {
       return res.status(404).json({
         mensaje: 'Envío no encontrado'
       });
     }
 
-    return res.json(envio);
+    return res.json({
+      EnvioID: envio.envioid,
+      PedidoID: envio.pedidoid,
+      TipoEnvioID: envio.tipoenvioid,
+      Estado: envio.estado,
+      NumeroSeguimiento: envio.numeroseguimiento,
+      FechaEnvio: envio.fechaenvio,
+      FechaEntrega: envio.fechaentrega
+    });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -45,17 +43,42 @@ async function consultarEnvio(req, res) {
   }
 }
 
+// Consultar envío por pedido
 async function consultarEnvioPorPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .execute('dbo.sp_Envios_ConsultarPorPedido');
+    if (!await usuarioPuedeVerPedido(
+      conexion, pedidoID, req.session.usuario
+    )) {
+      return res.status(404).json({
+        mensaje: 'Pedido no encontrado'
+      });
+    }
 
-    return res.json(resultado.recordset[0] || null);
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_envios_consultarporpedido($1)',
+      [pedidoID]
+    );
+
+    const envio = resultado.rows[0];
+
+    if (!envio) {
+      return res.json(null);
+    }
+
+    return res.json({
+      EnvioID: envio.envioid,
+      PedidoID: envio.pedidoid,
+      TipoEnvioID: envio.tipoenvioid,
+      Estado: envio.estado,
+      NumeroSeguimiento: envio.numeroseguimiento,
+      FechaEnvio: envio.fechaenvio,
+      FechaEntrega: envio.fechaentrega
+    });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -64,16 +87,11 @@ async function consultarEnvioPorPedido(req, res) {
   }
 }
 
+// Actualizar estado del envío
 async function actualizarEstadoEnvio(req, res) {
   try {
     const envioID = Number(req.params.id);
     const { nuevoEstado } = req.body;
-
-    if (!idValido(envioID)) {
-      return res.status(400).json({
-        mensaje: 'ID de envío inválido'
-      });
-    }
 
     const estados = ['Preparando', 'Enviado', 'Entregado'];
 
@@ -85,39 +103,46 @@ async function actualizarEstadoEnvio(req, res) {
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('EnvioID', sql.Int, envioID)
-      .input('NuevoEstado', sql.VarChar(20), nuevoEstado)
-      .execute('dbo.sp_Envios_ActualizarEstado');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_envios_actualizarestado($1, $2)',
+      [envioID, nuevoEstado]
+    );
 
-    const envioActualizado = resultado.recordset[0];
+    const envio = resultado.rows[0];
 
-    if (
-      envioActualizado &&
-      ['Enviado', 'Entregado'].includes(envioActualizado.Estado)
-    ) {
-      const pedidoResultado = await conexion.request()
-        .input('PedidoID', sql.Int, envioActualizado.PedidoID)
-        .execute('dbo.sp_Pedidos_ConsultarPorID');
+    if (envio && ['Enviado', 'Entregado'].includes(envio.estado)) {
+      const pedidoResultado = await conexion.query(
+        'SELECT * FROM public.sp_pedidos_consultarporid($1)',
+        [envio.pedidoid]
+      );
 
-      const pedido = pedidoResultado.recordset[0];
+      const pedido = pedidoResultado.rows[0];
 
       if (pedido) {
-        const tipo = envioActualizado.Estado === 'Enviado'
+        const tipo = envio.estado === 'Enviado'
           ? 'envio.enviado'
           : 'envio.entregado';
 
         await publicarEvento(tipo, {
-          usuarioID: pedido.UsuarioID,
-          pedidoID: envioActualizado.PedidoID
+          usuarioID: pedido.usuarioid,
+          pedidoID: envio.pedidoid
         });
       }
     }
 
     return res.json({
       mensaje: 'Estado del envío actualizado',
-      envio: envioActualizado
+      envio: {
+        EnvioID: envio.envioid,
+        PedidoID: envio.pedidoid,
+        TipoEnvioID: envio.tipoenvioid,
+        Estado: envio.estado,
+        NumeroSeguimiento: envio.numeroseguimiento,
+        FechaEnvio: envio.fechaenvio,
+        FechaEntrega: envio.fechaentrega
+      }
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({

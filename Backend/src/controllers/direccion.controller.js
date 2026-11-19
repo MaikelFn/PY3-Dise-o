@@ -1,165 +1,140 @@
-const { sql, getPool } = require('../config/database');
 
-function errorDireccion(res, error) {
-  const errores = {
-    50201: 404,
-    50202: 400,
-    50203: 404,
-    50204: 400,
-    50205: 404,
-    50206: 409
-  };
+const { getPool } = require('../config/database');
 
-  if (errores[error.number]) {
-    return res.status(errores[error.number]).json({
-      mensaje: error.message
-    });
-  }
-
-  console.error(error);
-  return res.status(500).json({
-    mensaje: 'Error al procesar dirección'
-  });
-}
-
-function validarDireccion(datos) {
-  const limites = {
-    provincia: 100,
-    canton: 100,
-    distrito: 100,
-    detalle: 300
-  };
-
-  for (const [campo, limite] of Object.entries(limites)) {
-    if (
-      typeof datos[campo] !== 'string' ||
-      !datos[campo].trim() ||
-      datos[campo].length > limite
-    ) {
-      return false;
-    }
-  }
-
-  return datos.principal === undefined ||
-    typeof datos.principal === 'boolean';
-}
-
+// Listar direcciones
 async function listarDirecciones(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Direcciones_ListarPorUsuario');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_direcciones_listarporusuario($1)',
+      [req.session.usuario.id]
+    );
 
-    return res.json(resultado.recordset);
+    return res.json(resultado.rows.map(d => ({
+      DireccionID: d.direccionid,
+      UsuarioID: d.usuarioid,
+      Provincia: d.provincia,
+      Canton: d.canton,
+      Distrito: d.distrito,
+      Detalle: d.detalle,
+      Principal: d.principal
+    })));
+
   } catch (error) {
-    return errorDireccion(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al listar direcciones'
+    });
   }
 }
 
+// Agregar dirección
 async function agregarDireccion(req, res) {
   try {
-    if (!validarDireccion(req.body)) {
-      return res.status(400).json({
-        mensaje: 'Datos de dirección inválidos'
-      });
-    }
-
-    const {
-      provincia,
-      canton,
-      distrito,
-      detalle,
-      principal = false
-    } = req.body;
-
+    const { provincia, canton, distrito, detalle, principal = false } = req.body;
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('Provincia', sql.NVarChar(100), provincia)
-      .input('Canton', sql.NVarChar(100), canton)
-      .input('Distrito', sql.NVarChar(100), distrito)
-      .input('Detalle', sql.NVarChar(300), detalle)
-      .input('Principal', sql.Bit, principal)
-      .execute('dbo.sp_Direcciones_Agregar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_direcciones_agregar($1, $2, $3, $4, $5, $6)',
+      [
+        req.session.usuario.id,
+        provincia,
+        canton,
+        distrito,
+        detalle,
+        principal
+      ]
+    );
+
+    const d = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Dirección agregada correctamente',
-      direccion: resultado.recordset[0]
+      direccion: {
+        DireccionID: d.direccionid,
+        UsuarioID: d.usuarioid,
+        Provincia: d.provincia,
+        Canton: d.canton,
+        Distrito: d.distrito,
+        Detalle: d.detalle,
+        Principal: d.principal
+      }
     });
+
   } catch (error) {
-    return errorDireccion(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al agregar dirección'
+    });
   }
 }
 
+// Actualizar dirección
 async function actualizarDireccion(req, res) {
   try {
     const id = Number(req.params.id);
 
-    if (
-      !Number.isInteger(id) ||
-      id <= 0 ||
-      !validarDireccion(req.body) ||
-      typeof req.body.principal !== 'boolean'
-    ) {
-      return res.status(400).json({
-        mensaje: 'Datos de dirección inválidos'
-      });
-    }
-
-    const {
-      provincia,
-      canton,
-      distrito,
-      detalle,
-      principal
-    } = req.body;
-
+    const { provincia, canton, distrito, detalle, principal } = req.body;
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('DireccionID', sql.Int, id)
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('Provincia', sql.NVarChar(100), provincia)
-      .input('Canton', sql.NVarChar(100), canton)
-      .input('Distrito', sql.NVarChar(100), distrito)
-      .input('Detalle', sql.NVarChar(300), detalle)
-      .input('Principal', sql.Bit, principal)
-      .execute('dbo.sp_Direcciones_Actualizar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_direcciones_actualizar($1, $2, $3, $4, $5, $6, $7)',
+      [
+        id,
+        req.session.usuario.id,
+        provincia,
+        canton,
+        distrito,
+        detalle,
+        principal
+      ]
+    );
+
+    const d = resultado.rows[0];
 
     return res.json({
       mensaje: 'Dirección actualizada correctamente',
-      direccion: resultado.recordset[0]
+      direccion: {
+        DireccionID: d.direccionid,
+        UsuarioID: d.usuarioid,
+        Provincia: d.provincia,
+        Canton: d.canton,
+        Distrito: d.distrito,
+        Detalle: d.detalle,
+        Principal: d.principal
+      }
     });
+
   } catch (error) {
-    return errorDireccion(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al actualizar dirección'
+    });
   }
 }
 
+// Eliminar dirección
 async function eliminarDireccion(req, res) {
   try {
     const id = Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        mensaje: 'ID de dirección inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    await conexion.request()
-      .input('DireccionID', sql.Int, id)
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Direcciones_Eliminar');
+    await conexion.query(
+      'SELECT * FROM public.sp_direcciones_eliminar($1, $2)',
+      [id, req.session.usuario.id]
+    );
 
     return res.json({
       mensaje: 'Dirección eliminada correctamente'
     });
+
   } catch (error) {
-    return errorDireccion(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al eliminar dirección'
+    });
   }
 }
 

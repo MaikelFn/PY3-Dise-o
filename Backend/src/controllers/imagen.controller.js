@@ -1,178 +1,168 @@
-const { sql, getPool } = require('../config/database');
+const { getPool } = require('../config/database');
 
-function manejarError(res, error) {
-  const errores = {
-    50501: 400,
-    50502: 400,
-    50503: 404,
-    50507: 404,
-    50508: 404
-  };
-
-  if (errores[error.number]) {
-    return res.status(errores[error.number]).json({
-      mensaje: error.message
-    });
-  }
-
-  console.error(error);
-  return res.status(500).json({
-    mensaje: 'Error al procesar imagen'
-  });
-}
-
-async function obtenerVendedor(conexion, usuarioID) {
-  const resultado = await conexion.request()
-    .input('UsuarioID', sql.Int, usuarioID)
-    .execute('dbo.sp_Vendedores_ObtenerPorUsuario');
-
-  return resultado.recordset[0]?.VendedorID;
-}
-
+// Listar imágenes
 async function listarImagenes(req, res) {
   try {
     const productoID = Number(req.params.id);
 
-    if (!Number.isInteger(productoID) || productoID <= 0) {
-      return res.status(400).json({
-        mensaje: 'ID de producto inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('ProductoID', sql.Int, productoID)
-      .execute('dbo.sp_ImagenesProducto_ListarPorProducto');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_imagenesproducto_listarporproducto($1)',
+      [productoID]
+    );
 
-    return res.json(resultado.recordset);
+    const imagenes = resultado.rows.map(i => ({
+      ImagenID: i.imagenid,
+      ProductoID: i.productoid,
+      ImagenURL: i.imagenurl,
+      EsPrincipal: i.esprincipal,
+      Orden: i.orden
+    }));
+
+    return res.json(imagenes);
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al listar imágenes'
+    });
   }
 }
 
+// Agregar imagen
 async function agregarImagen(req, res) {
   try {
     const productoID = Number(req.params.id);
-    const {
-      imagenURL,
-      esPrincipal = false,
-      orden = 0
-    } = req.body;
+    const { imagenURL, esPrincipal = false, orden = 0 } = req.body;
 
-    if (
-      !Number.isInteger(productoID) ||
-      productoID <= 0 ||
-      typeof imagenURL !== 'string' ||
-      !imagenURL.trim() ||
-      imagenURL.length > 500 ||
-      !/^https?:\/\/\S+$/i.test(imagenURL.trim()) ||
-      typeof esPrincipal !== 'boolean' ||
-      !Number.isInteger(orden) ||
-      orden < 0
-    ) {
+    if (!/^https?:\/\/\S+$/i.test(imagenURL.trim())) {
       return res.status(400).json({
         mensaje: 'Datos de imagen inválidos'
       });
     }
 
     const conexion = await getPool();
-    const vendedorID = await obtenerVendedor(
-      conexion,
-      req.session.usuario.id
+
+    const vendedor = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_obtenerporusuario($1)',
+      [req.session.usuario.id]
     );
 
-    if (!vendedorID) {
+    if (!vendedor.rows.length) {
       return res.status(403).json({
         mensaje: 'No tiene un perfil de vendedor activo'
       });
     }
 
-    const resultado = await conexion.request()
-      .input('ProductoID', sql.Int, productoID)
-      .input('VendedorID', sql.Int, vendedorID)
-      .input('ImagenURL', sql.NVarChar(500), imagenURL.trim())
-      .input('EsPrincipal', sql.Bit, esPrincipal)
-      .input('Orden', sql.Int, orden)
-      .execute('dbo.sp_ImagenesProducto_Agregar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_imagenesproducto_agregar($1, $2, $3, $4, $5)',
+      [
+        productoID,
+        vendedor.rows[0].vendedorid,
+        imagenURL.trim(),
+        esPrincipal,
+        orden
+      ]
+    );
+
+    const i = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Imagen agregada correctamente',
-      imagen: resultado.recordset[0]
+      imagen: {
+        ImagenID: i.imagenid,
+        ProductoID: i.productoid,
+        ImagenURL: i.imagenurl,
+        EsPrincipal: i.esprincipal,
+        Orden: i.orden
+      }
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al agregar imagen'
+    });
   }
 }
 
+// Establecer imagen principal
 async function establecerPrincipal(req, res) {
   try {
     const imagenID = Number(req.params.id);
 
-    if (!Number.isInteger(imagenID) || imagenID <= 0) {
-      return res.status(400).json({
-        mensaje: 'ID de imagen inválido'
-      });
-    }
-
     const conexion = await getPool();
-    const vendedorID = await obtenerVendedor(
-      conexion,
-      req.session.usuario.id
+
+    const vendedor = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_obtenerporusuario($1)',
+      [req.session.usuario.id]
     );
 
-    if (!vendedorID) {
+    if (!vendedor.rows.length) {
       return res.status(403).json({
         mensaje: 'No tiene un perfil de vendedor activo'
       });
     }
 
-    const resultado = await conexion.request()
-      .input('ImagenID', sql.Int, imagenID)
-      .input('VendedorID', sql.Int, vendedorID)
-      .execute('dbo.sp_ImagenesProducto_EstablecerPrincipal');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_imagenesproducto_establecerprincipal($1, $2)',
+      [imagenID, vendedor.rows[0].vendedorid]
+    );
+
+    const imagenes = resultado.rows.map(i => ({
+      ImagenID: i.imagenid,
+      ProductoID: i.productoid,
+      ImagenURL: i.imagenurl,
+      EsPrincipal: i.esprincipal,
+      Orden: i.orden
+    }));
 
     return res.json({
       mensaje: 'Imagen principal actualizada correctamente',
-      imagenes: resultado.recordset
+      imagenes
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al establecer imagen principal'
+    });
   }
 }
 
+// Eliminar imagen
 async function eliminarImagen(req, res) {
   try {
     const imagenID = Number(req.params.id);
 
-    if (!Number.isInteger(imagenID) || imagenID <= 0) {
-      return res.status(400).json({
-        mensaje: 'ID de imagen inválido'
-      });
-    }
-
     const conexion = await getPool();
-    const vendedorID = await obtenerVendedor(
-      conexion,
-      req.session.usuario.id
+
+    const vendedor = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_obtenerporusuario($1)',
+      [req.session.usuario.id]
     );
 
-    if (!vendedorID) {
+    if (!vendedor.rows.length) {
       return res.status(403).json({
         mensaje: 'No tiene un perfil de vendedor activo'
       });
     }
 
-    await conexion.request()
-      .input('ImagenID', sql.Int, imagenID)
-      .input('VendedorID', sql.Int, vendedorID)
-      .execute('dbo.sp_ImagenesProducto_Eliminar');
+    await conexion.query(
+      'SELECT * FROM public.sp_imagenesproducto_eliminar($1, $2)',
+      [imagenID, vendedor.rows[0].vendedorid]
+    );
 
     return res.json({
       mensaje: 'Imagen eliminada correctamente'
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al eliminar imagen'
+    });
   }
 }
 
