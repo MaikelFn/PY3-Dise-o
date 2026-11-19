@@ -1,4 +1,5 @@
-const { sql, getPool } = require('../config/database');
+
+const { getPool } = require('../config/database');
 
 const { eventos } = require('../events/pedido.events');
 
@@ -17,12 +18,15 @@ async function guardarNotificacion(tipo, datos) {
 
   const conexion = await getPool();
 
-  await conexion.request()
-    .input('UsuarioID', sql.Int, notificacion.usuarioID)
-    .input('Titulo', sql.NVarChar(150), notificacion.titulo)
-    .input('Mensaje', sql.NVarChar(500), notificacion.mensaje)
-    .input('PedidoID', sql.Int, notificacion.pedidoID)
-    .execute('dbo.sp_Notificaciones_Crear');
+  await conexion.query(
+    'SELECT * FROM public.sp_notificaciones_crear($1, $2, $3, $4)',
+    [
+      notificacion.usuarioID,
+      notificacion.titulo,
+      notificacion.mensaje,
+      notificacion.pedidoID
+    ]
+  );
 }
 
 const tipos = [
@@ -35,7 +39,11 @@ const tipos = [
 ];
 
 for (const tipo of tipos) {
-  eventos.on(tipo, datos => guardarNotificacion(tipo, datos));
+  eventos.on(tipo, datos => {
+    guardarNotificacion(tipo, datos).catch(error => {
+      console.error('Error al guardar notificación:', error);
+    });
+  });
 }
 
 module.exports = {

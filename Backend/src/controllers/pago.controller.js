@@ -1,50 +1,35 @@
-const { sql, getPool } = require('../config/database');
+
+const { getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
 
-function idValido(valor) {
-  const numero = Number(valor);
-
-  return Number.isSafeInteger(numero) &&
-    numero > 0 &&
-    numero <= 2147483647;
-}
-
+// Registrar pago
 async function registrarPago(req, res) {
   try {
     const { pedidoID, metodoPagoID } = req.body;
 
-    if (!idValido(pedidoID) || !idValido(metodoPagoID)) {
-      return res.status(400).json({
-        mensaje: 'Pedido o método de pago inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, Number(pedidoID))
-      .input('MetodoPagoID', sql.Int, Number(metodoPagoID))
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Pagos_Registrar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pagos_registrar($1, $2, $3)',
+      [pedidoID, metodoPagoID, req.session.usuario.id]
+    );
+
+    const p = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Pago registrado correctamente',
-      pago: resultado.recordset[0]
+      pago: {
+        PagoID: p.pagoid,
+        PedidoID: p.pedidoid,
+        MetodoPagoID: p.metodopagoid,
+        Monto: p.monto,
+        Estado: p.estado,
+        FechaPago: p.fechapago
+      }
     });
+
   } catch (error) {
-    if (error.number === 51401) {
-      return res.status(404).json({ mensaje: error.message });
-    }
-
-    if (error.number === 51402) {
-      return res.status(400).json({ mensaje: error.message });
-    }
-
-    if (error.number === 51403) {
-      return res.status(409).json({ mensaje: error.message });
-    }
-
     console.error(error);
     return res.status(500).json({
       mensaje: 'Error al registrar pago'
@@ -52,33 +37,37 @@ async function registrarPago(req, res) {
   }
 }
 
+// Consultar pago
 async function consultarPago(req, res) {
   try {
     const pagoID = Number(req.params.id);
 
-    if (!idValido(pagoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pago inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('PagoID', sql.Int, pagoID)
-      .execute('dbo.sp_Pagos_ConsultarPorID');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pagos_consultarporid($1)',
+      [pagoID]
+    );
 
-    const pago = resultado.recordset[0];
+    const p = resultado.rows[0];
 
-    if (!pago || !await usuarioPuedeVerPedido(
-      conexion, pago.PedidoID, req.session.usuario
+    if (!p || !await usuarioPuedeVerPedido(
+      conexion, p.pedidoid, req.session.usuario
     )) {
       return res.status(404).json({
         mensaje: 'Pago no encontrado'
       });
     }
 
-    return res.json(pago);
+    return res.json({
+      PagoID: p.pagoid,
+      PedidoID: p.pedidoid,
+      MetodoPagoID: p.metodopagoid,
+      Monto: p.monto,
+      Estado: p.estado,
+      FechaPago: p.fechapago
+    });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -87,17 +76,26 @@ async function consultarPago(req, res) {
   }
 }
 
+// Listar pagos por pedido
 async function listarPagosPorPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('PedidoID', sql.Int, pedidoID)
-      .execute('dbo.sp_Pagos_ListarPorPedido');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pagos_listarporpedido($1)',
+      [pedidoID]
+    );
 
-    return res.json(resultado.recordset);
+    return res.json(resultado.rows.map(p => ({
+      PagoID: p.pagoid,
+      PedidoID: p.pedidoid,
+      MetodoPagoID: p.metodopagoid,
+      Monto: p.monto,
+      Estado: p.estado,
+      FechaPago: p.fechapago
+    })));
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -106,50 +104,53 @@ async function listarPagosPorPedido(req, res) {
   }
 }
 
-// Operación administrativa de prueba.
-// En producción la aprobación debe depender de una
-// verificación confiable de la pasarela de pagos.
+// Aprobar pago (operación administrativa de prueba)
 async function aprobarPago(req, res) {
   try {
     const pagoID = Number(req.params.id);
 
-    if (!idValido(pagoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pago inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    await conexion.request()
-      .input('PagoID', sql.Int, pagoID)
-      .execute('dbo.sp_Pagos_Aprobar');
+    await conexion.query(
+      'SELECT * FROM public.sp_pagos_aprobar($1)',
+      [pagoID]
+    );
 
-    const resultado = await conexion.request()
-      .input('PagoID', sql.Int, pagoID)
-      .execute('dbo.sp_Pagos_ConsultarPorID');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pagos_consultarporid($1)',
+      [pagoID]
+    );
 
-    const pago = resultado.recordset[0];
+    const p = resultado.rows[0];
 
-    if (pago) {
-      const pedidoResultado = await conexion.request()
-        .input('PedidoID', sql.Int, pago.PedidoID)
-        .execute('dbo.sp_Pedidos_ConsultarPorID');
+    if (p) {
+      const pedidoResultado = await conexion.query(
+        'SELECT * FROM public.sp_pedidos_consultarporid($1)',
+        [p.pedidoid]
+      );
 
-      const pedido = pedidoResultado.recordset[0];
+      const pedido = pedidoResultado.rows[0];
 
       if (pedido) {
         await publicarEvento('pago.aprobado', {
-          usuarioID: pedido.UsuarioID,
-          pedidoID: pago.PedidoID
+          usuarioID: pedido.usuarioid,
+          pedidoID: p.pedidoid
         });
       }
     }
 
     return res.json({
       mensaje: 'Pago aprobado y pedido confirmado',
-      pago
+      pago: p ? {
+        PagoID: p.pagoid,
+        PedidoID: p.pedidoid,
+        MetodoPagoID: p.metodopagoid,
+        Monto: p.monto,
+        Estado: p.estado,
+        FechaPago: p.fechapago
+      } : null
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -158,43 +159,48 @@ async function aprobarPago(req, res) {
   }
 }
 
+// Rechazar pago
 async function rechazarPago(req, res) {
   try {
     const pagoID = Number(req.params.id);
 
-    if (!idValido(pagoID)) {
-      return res.status(400).json({
-        mensaje: 'ID de pago inválido'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('PagoID', sql.Int, pagoID)
-      .execute('dbo.sp_Pagos_Rechazar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_pagos_rechazar($1)',
+      [pagoID]
+    );
 
-    const pago = resultado.recordset[0];
+    const p = resultado.rows[0];
 
-    if (pago) {
-      const pedidoResultado = await conexion.request()
-        .input('PedidoID', sql.Int, pago.PedidoID)
-        .execute('dbo.sp_Pedidos_ConsultarPorID');
+    if (p) {
+      const pedidoResultado = await conexion.query(
+        'SELECT * FROM public.sp_pedidos_consultarporid($1)',
+        [p.pedidoid]
+      );
 
-      const pedido = pedidoResultado.recordset[0];
+      const pedido = pedidoResultado.rows[0];
 
       if (pedido) {
         await publicarEvento('pago.rechazado', {
-          usuarioID: pedido.UsuarioID,
-          pedidoID: pago.PedidoID
+          usuarioID: pedido.usuarioid,
+          pedidoID: p.pedidoid
         });
       }
     }
 
     return res.json({
       mensaje: 'Pago rechazado correctamente',
-      pago
+      pago: p ? {
+        PagoID: p.pagoid,
+        PedidoID: p.pedidoid,
+        MetodoPagoID: p.metodopagoid,
+        Monto: p.monto,
+        Estado: p.estado,
+        FechaPago: p.fechapago
+      } : null
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({

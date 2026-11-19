@@ -1,13 +1,22 @@
+
 const { getPool } = require('../config/database');
 
 async function listarMetodosPago(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .execute('dbo.sp_MetodosPago_Listar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_metodospago_listar()'
+    );
 
-    return res.json(resultado.recordset);
+    const metodosPago = resultado.rows.map(m => ({
+      MetodoPagoID: m.metodopagoid,
+      Nombre: m.nombre,
+      Descripcion: m.descripcion
+    }));
+
+    return res.json(metodosPago);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({

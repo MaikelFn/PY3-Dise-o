@@ -1,13 +1,23 @@
+
 const { getPool } = require('../config/database');
 
 async function listarTiposEnvio(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .execute('dbo.sp_TiposEnvio_Listar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_tiposenvio_listar()'
+    );
 
-    return res.json(resultado.recordset);
+    const tiposEnvio = resultado.rows.map(t => ({
+      TipoEnvioID: t.tipoenvioid,
+      Nombre: t.nombre,
+      Descripcion: t.descripcion,
+      Costo: t.costo
+    }));
+
+    return res.json(tiposEnvio);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({

@@ -1,178 +1,181 @@
-const { sql, getPool } = require('../config/database');
+const { getPool } = require('../config/database');
 
-function errorVendedor(res, error) {
-  const errores = {
-    50101: 400,
-    50102: 403,
-    50103: 409,
-    50104: 404,
-    50105: 400,
-    50106: 404
-  };
-
-  if (errores[error.number]) {
-    return res.status(errores[error.number]).json({
-      mensaje: error.message
-    });
-  }
-
-  console.error(error);
-  return res.status(500).json({
-    mensaje: 'Error al procesar vendedor'
-  });
-}
-
+// Listar vendedores
 async function listarVendedores(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('SoloActivos', sql.Bit, 1)
-      .execute('dbo.sp_Vendedores_Listar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_listar($1)',
+      [true]
+    );
 
-    return res.json(resultado.recordset);
+    const vendedores = resultado.rows.map(v => ({
+      VendedorID: v.vendedorid,
+      UsuarioID: v.usuarioid,
+      NombreComercial: v.nombrecomercial,
+      Descripcion: v.descripcion,
+      Activo: v.activo
+    }));
+
+    return res.json(vendedores);
+
   } catch (error) {
-    return errorVendedor(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al listar vendedores'
+    });
   }
 }
 
+// Consultar vendedor
 async function consultarVendedor(req, res) {
   try {
     const id = Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ mensaje: 'ID inválido' });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('VendedorID', sql.Int, id)
-      .execute('dbo.sp_Vendedores_ConsultarPorID');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_consultarporid($1)',
+      [id]
+    );
 
-    if (!resultado.recordset.length) {
+    if (!resultado.rows.length || !resultado.rows[0].activo) {
       return res.status(404).json({
         mensaje: 'Vendedor no encontrado'
       });
     }
 
-    const vendedor = resultado.recordset[0];
+    const v = resultado.rows[0];
 
-    // No exponer datos personales de vendedores inactivos.
-    if (!vendedor.Activo) {
-      return res.status(404).json({
-        mensaje: 'Vendedor no encontrado'
-      });
-    }
+    return res.json({
+      VendedorID: v.vendedorid,
+      UsuarioID: v.usuarioid,
+      NombreComercial: v.nombrecomercial,
+      Descripcion: v.descripcion,
+      Activo: v.activo
+    });
 
-    return res.json(vendedor);
   } catch (error) {
-    return errorVendedor(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al consultar vendedor'
+    });
   }
 }
 
+// Registrar vendedor
 async function registrarVendedor(req, res) {
   try {
     const { nombreComercial, descripcion } = req.body;
 
-    if (
-      typeof nombreComercial !== 'string' ||
-      !nombreComercial.trim() ||
-      nombreComercial.length > 150 ||
-      (descripcion != null &&
-        (typeof descripcion !== 'string' || descripcion.length > 500))
-    ) {
-      return res.status(400).json({
-        mensaje: 'Datos del vendedor inválidos'
-      });
-    }
-
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('NombreComercial', sql.NVarChar(150), nombreComercial)
-      .input('Descripcion', sql.NVarChar(500), descripcion ?? null)
-      .execute('dbo.sp_Vendedores_Registrar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_registrar($1, $2, $3)',
+      [
+        req.session.usuario.id,
+        nombreComercial.trim(),
+        descripcion ?? null
+      ]
+    );
+
+    const v = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Vendedor registrado correctamente',
-      vendedor: resultado.recordset[0]
+      vendedor: {
+        VendedorID: v.vendedorid,
+        UsuarioID: v.usuarioid,
+        NombreComercial: v.nombrecomercial,
+        Descripcion: v.descripcion,
+        Activo: v.activo
+      }
     });
+
   } catch (error) {
-    return errorVendedor(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al registrar vendedor'
+    });
   }
 }
 
+// Actualizar vendedor
 async function actualizarVendedor(req, res) {
   try {
     const id = Number(req.params.id);
     const { nombreComercial, descripcion } = req.body;
 
-    if (
-      !Number.isInteger(id) ||
-      id <= 0 ||
-      typeof nombreComercial !== 'string' ||
-      !nombreComercial.trim() ||
-      nombreComercial.length > 150 ||
-      (descripcion != null &&
-        (typeof descripcion !== 'string' || descripcion.length > 500))
-    ) {
-      return res.status(400).json({
-        mensaje: 'Datos del vendedor inválidos'
-      });
-    }
-
     const conexion = await getPool();
 
-    // Verificar que el vendedor pertenece al usuario.
-    const propietario = await conexion.request()
-      .input('VendedorID', sql.Int, id)
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Vendedores_ValidarPropietario');
+    const propietario = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_validarpropietario($1, $2)',
+      [id, req.session.usuario.id]
+    );
 
-    if (!propietario.recordset.length) {
+    if (!propietario.rows.length) {
       return res.status(403).json({
         mensaje: 'No puede modificar este vendedor'
       });
     }
 
-    const resultado = await conexion.request()
-      .input('VendedorID', sql.Int, id)
-      .input('NombreComercial', sql.NVarChar(150), nombreComercial)
-      .input('Descripcion', sql.NVarChar(500), descripcion ?? null)
-      .execute('dbo.sp_Vendedores_Actualizar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_actualizar($1, $2, $3)',
+      [id, nombreComercial.trim(), descripcion ?? null]
+    );
+
+    const v = resultado.rows[0];
 
     return res.json({
       mensaje: 'Vendedor actualizado correctamente',
-      vendedor: resultado.recordset[0]
+      vendedor: {
+        VendedorID: v.vendedorid,
+        UsuarioID: v.usuarioid,
+        NombreComercial: v.nombrecomercial,
+        Descripcion: v.descripcion,
+        Activo: v.activo
+      }
     });
+
   } catch (error) {
-    return errorVendedor(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al actualizar vendedor'
+    });
   }
 }
 
+// Desactivar vendedor
 async function desactivarVendedor(req, res) {
   try {
     const id = Number(req.params.id);
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ mensaje: 'ID inválido' });
-    }
-
     const conexion = await getPool();
 
-    // Solo un administrador puede desactivar vendedores.
-    const resultado = await conexion.request()
-      .input('VendedorID', sql.Int, id)
-      .execute('dbo.sp_Vendedores_Desactivar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_vendedores_desactivar($1)',
+      [id]
+    );
+
+    const v = resultado.rows[0];
 
     return res.json({
       mensaje: 'Vendedor desactivado correctamente',
-      vendedor: resultado.recordset[0]
+      vendedor: {
+        VendedorID: v.vendedorid,
+        UsuarioID: v.usuarioid,
+        NombreComercial: v.nombrecomercial,
+        Descripcion: v.descripcion,
+        Activo: v.activo
+      }
     });
+
   } catch (error) {
-    return errorVendedor(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al desactivar vendedor'
+    });
   }
 }
 
