@@ -1,19 +1,24 @@
-const { sql, getPool } = require('../config/database');
+const { getPool } = require('../config/database');
 
+// Obtener o crear carrito
 async function obtenerOCrearCarrito(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Carritos_ObtenerOCrear');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_carritos_obtenerocrear($1)',
+      [req.session.usuario.id]
+    );
 
-    return res.json(resultado.recordset[0]);
+    const c = resultado.rows[0];
+
+    return res.json({
+      CarritoID: c.carritoid,
+      UsuarioID: c.usuarioid,
+      FechaCreacion: c.fechacreacion
+    });
+
   } catch (error) {
-    if (error.number === 50701) {
-      return res.status(403).json({ mensaje: error.message });
-    }
-
     console.error(error);
     return res.status(500).json({
       mensaje: 'Error al obtener carrito'
@@ -21,15 +26,24 @@ async function obtenerOCrearCarrito(req, res) {
   }
 }
 
+// Consultar carrito
 async function consultarCarrito(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Carritos_ConsultarPorUsuario');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_carritos_consultarporusuario($1)',
+      [req.session.usuario.id]
+    );
 
-    return res.json(resultado.recordset);
+    const carrito = resultado.rows.map(c => ({
+      CarritoID: c.carritoid,
+      UsuarioID: c.usuarioid,
+      FechaCreacion: c.fechacreacion
+    }));
+
+    return res.json(carrito);
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -38,23 +52,22 @@ async function consultarCarrito(req, res) {
   }
 }
 
+// Vaciar carrito
 async function vaciarCarrito(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_Carritos_Vaciar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_carritos_vaciar($1)',
+      [req.session.usuario.id]
+    );
 
     return res.json({
       mensaje: 'Carrito vaciado correctamente',
-      carrito: resultado.recordset
+      carrito: resultado.rows
     });
-  } catch (error) {
-    if (error.number === 50702) {
-      return res.status(404).json({ mensaje: error.message });
-    }
 
+  } catch (error) {
     console.error(error);
     return res.status(500).json({
       mensaje: 'Error al vaciar carrito'

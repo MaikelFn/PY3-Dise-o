@@ -1,53 +1,32 @@
-const { sql, getPool } = require('../config/database');
+const { getPool } = require('../config/database');
 
-function manejarError(res, error) {
-  const errores = {
-    50801: 400,
-    50802: 403,
-    50803: 404,
-    50804: 409,
-    50805: 400,
-    50806: 404,
-    50807: 409,
-    50808: 404
-  };
-
-  if (errores[error.number]) {
-    return res.status(errores[error.number]).json({
-      mensaje: error.message
-    });
-  }
-
-  console.error(error);
-  return res.status(500).json({
-    mensaje: 'Error al procesar detalle del carrito'
-  });
-}
-
+// Listar detalles del carrito
 async function listarDetalles(req, res) {
   try {
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .execute('dbo.sp_DetallesCarrito_ListarPorUsuario');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_detallescarrito_listarporusuario($1)',
+      [req.session.usuario.id]
+    );
 
-    return res.json(resultado.recordset);
+    return res.json(resultado.rows);
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al listar detalles del carrito'
+    });
   }
 }
 
+// Agregar producto al carrito
 async function agregarDetalle(req, res) {
   try {
     const { productoID, cantidad } = req.body;
 
-    if (
-      !Number.isInteger(productoID) ||
-      productoID <= 0 ||
-      !Number.isInteger(cantidad) ||
-      cantidad <= 0
-    ) {
+    if (!Number.isInteger(productoID) || productoID <= 0 ||
+        !Number.isInteger(cantidad) || cantidad <= 0) {
       return res.status(400).json({
         mensaje: 'Producto o cantidad inválida'
       });
@@ -55,32 +34,32 @@ async function agregarDetalle(req, res) {
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('ProductoID', sql.Int, productoID)
-      .input('Cantidad', sql.Int, cantidad)
-      .execute('dbo.sp_DetallesCarrito_Agregar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_detallescarrito_agregar($1, $2, $3)',
+      [req.session.usuario.id, productoID, cantidad]
+    );
 
     return res.status(201).json({
       mensaje: 'Producto agregado al carrito',
-      detalles: resultado.recordset
+      detalles: resultado.rows
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al agregar producto al carrito'
+    });
   }
 }
 
+// Actualizar cantidad
 async function actualizarCantidad(req, res) {
   try {
     const productoID = Number(req.params.productoID);
     const { cantidad } = req.body;
 
-    if (
-      !Number.isInteger(productoID) ||
-      productoID <= 0 ||
-      !Number.isInteger(cantidad) ||
-      cantidad <= 0
-    ) {
+    if (!Number.isInteger(productoID) || productoID <= 0 ||
+        !Number.isInteger(cantidad) || cantidad <= 0) {
       return res.status(400).json({
         mensaje: 'Producto o cantidad inválida'
       });
@@ -88,21 +67,25 @@ async function actualizarCantidad(req, res) {
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('ProductoID', sql.Int, productoID)
-      .input('Cantidad', sql.Int, cantidad)
-      .execute('dbo.sp_DetallesCarrito_ActualizarCantidad');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_detallescarrito_actualizarcantidad($1, $2, $3)',
+      [req.session.usuario.id, productoID, cantidad]
+    );
 
     return res.json({
       mensaje: 'Cantidad actualizada correctamente',
-      detalles: resultado.recordset
+      detalles: resultado.rows
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al actualizar cantidad'
+    });
   }
 }
 
+// Eliminar producto del carrito
 async function eliminarDetalle(req, res) {
   try {
     const productoID = Number(req.params.productoID);
@@ -115,17 +98,21 @@ async function eliminarDetalle(req, res) {
 
     const conexion = await getPool();
 
-    const resultado = await conexion.request()
-      .input('UsuarioID', sql.Int, req.session.usuario.id)
-      .input('ProductoID', sql.Int, productoID)
-      .execute('dbo.sp_DetallesCarrito_Eliminar');
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_detallescarrito_eliminar($1, $2)',
+      [req.session.usuario.id, productoID]
+    );
 
     return res.json({
       mensaje: 'Producto eliminado del carrito',
-      detalles: resultado.recordset
+      detalles: resultado.rows
     });
+
   } catch (error) {
-    return manejarError(res, error);
+    console.error(error);
+    return res.status(500).json({
+      mensaje: 'Error al eliminar producto del carrito'
+    });
   }
 }
 
