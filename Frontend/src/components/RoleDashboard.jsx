@@ -51,6 +51,55 @@ const roleDetails = {
   }
 }
 
+const dashboardDataStrategies = {
+  buyer: async (userId) => {
+    const [orders, userResponse] = await Promise.all([
+      getOrders(),
+      getUser(userId)
+    ])
+    return {
+      orders,
+      roleOrders: [],
+      profile: userResponse.usuario,
+      seller: null,
+      sellerProducts: []
+    }
+  },
+  seller: async (userId) => {
+    const sellers = await getSellers()
+    const seller = sellers.find((item) => Number(item.UsuarioID) === Number(userId))
+
+    if (!seller) {
+      return {
+        orders: [],
+        roleOrders: [],
+        profile: null,
+        seller: null,
+        sellerProducts: []
+      }
+    }
+
+    const [sellerProducts, roleOrders] = await Promise.all([
+      getProducts({ vendorId: seller.VendedorID }),
+      getSellerOrders()
+    ])
+    return {
+      orders: [],
+      roleOrders,
+      profile: null,
+      seller,
+      sellerProducts
+    }
+  },
+  admin: async (_userId) => ({
+    orders: [],
+    roleOrders: await getAdminOrders(),
+    profile: null,
+    seller: null,
+    sellerProducts: []
+  })
+}
+
 const money = (value) => new Intl.NumberFormat('es-CR', {
   style: 'currency',
   currency: 'CRC',
@@ -94,36 +143,23 @@ function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole,
 
   useEffect(() => {
     let active = true
+    const loadStrategy = dashboardDataStrategies[role]
+
     async function loadRoleData() {
       setLoading(true)
       setError('')
       try {
-        if (role === 'buyer') {
-          const [nextOrders, userResponse] = await Promise.all([getOrders(), getUser(user.id)])
-          if (active) {
-            setOrders(nextOrders)
-            setProfile(userResponse.usuario)
-          }
-        } else if (role === 'seller') {
-          const sellers = await getSellers()
-          const ownSeller = sellers.find((item) => Number(item.UsuarioID) === Number(user.id))
-          if (active) setSeller(ownSeller || null)
-          if (ownSeller) {
-            const [ownProducts, ownOrders] = await Promise.all([
-              getProducts({ vendorId: ownSeller.VendedorID }),
-              getSellerOrders()
-            ])
-            if (active) {
-              setSellerProducts(ownProducts)
-              setRoleOrders(ownOrders)
-            }
-          } else if (active) {
-            setSellerProducts([])
-            setRoleOrders([])
-          }
-        } else if (role === 'admin') {
-          const allOrders = await getAdminOrders()
-          if (active) setRoleOrders(allOrders)
+        if (!loadStrategy) {
+          throw new Error('No hay una estrategia de carga configurada para este rol.')
+        }
+
+        const data = await loadStrategy(user.id)
+        if (active) {
+          setOrders(data.orders)
+          setProfile(data.profile)
+          setSeller(data.seller)
+          setSellerProducts(data.sellerProducts)
+          setRoleOrders(data.roleOrders)
         }
       } catch (requestError) {
         if (active) setError(requestError.message)

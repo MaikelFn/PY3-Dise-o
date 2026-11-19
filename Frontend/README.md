@@ -39,6 +39,10 @@ Las imágenes de productos se guardan en el almacenamiento local del backend. En
 
 El backend actual no expone operaciones para persistir favoritos, calificaciones u ofertas, ni listados globales de usuarios. Esas secciones no se simulan como información real.
 
+## Patrón de diseño
+
+Se aplica **Strategy** en `src/components/RoleDashboard.jsx`, mediante `dashboardDataStrategies`. Cada rol selecciona su propia estrategia para cargar perfil, productos o pedidos; el efecto común ejecuta la estrategia correspondiente y conserva una sola estructura de panel.
+
 ## Validación
 
 ```powershell
