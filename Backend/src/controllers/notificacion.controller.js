@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar notificaciones
 async function listarNotificaciones(req, res) {
@@ -15,10 +16,7 @@ async function listarNotificaciones(req, res) {
     return res.json(resultado.rows);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar notificaciones'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar notificaciones');
   }
 }
 
@@ -43,10 +41,7 @@ async function consultarNotificacion(req, res) {
     return res.json(resultado.rows[0]);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar notificación'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar notificación');
   }
 }
 
@@ -68,10 +63,7 @@ async function marcarLeida(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al marcar notificación'
-    });
+    return manejarErrorPostgres(error, res, 'Error al marcar notificación');
   }
 }
 
@@ -92,10 +84,7 @@ async function marcarTodasLeidas(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al actualizar notificaciones'
-    });
+    return manejarErrorPostgres(error, res, 'Error al actualizar notificaciones');
   }
 }
 

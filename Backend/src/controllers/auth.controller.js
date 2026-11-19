@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const { getPool } = require('../config/database');
 const { promisify } = require('util');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 async function registrarUsuario(req, res) {
   try {
@@ -41,20 +42,7 @@ async function registrarUsuario(req, res) {
     });
 
   } catch (error) {
-    if (
-      error.code === '23505' ||
-      error.message?.includes('correo ya')
-    ) {
-      return res.status(409).json({
-        mensaje: 'El correo ya está registrado'
-      });
-    }
-
-    console.error('Error al registrar usuario:', error);
-
-    return res.status(500).json({
-      mensaje: 'Error al registrar usuario'
-    });
+    return manejarErrorPostgres(error, res, 'Error al registrar usuario');
   }
 }
 
@@ -101,11 +89,7 @@ async function iniciarSesion(req, res) {
     });
 
   } catch (error) {
-    console.error('Error al iniciar sesión:', error);
-
-    return res.status(500).json({
-      mensaje: 'Error al iniciar sesión'
-    });
+    return manejarErrorPostgres(error, res, 'Error al iniciar sesión');
   }
 }
 
@@ -138,11 +122,7 @@ async function cerrarSesion(req, res) {
     });
 
   } catch (error) {
-    console.error('Error al cerrar sesión:', error);
-
-    return res.status(500).json({
-      mensaje: 'Error al cerrar sesión'
-    });
+    return manejarErrorPostgres(error, res, 'Error al cerrar sesión');
   }
 }
 

@@ -1,5 +1,6 @@
 
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 async function listarMetodosPago(req, res) {
   try {
@@ -18,10 +19,7 @@ async function listarMetodosPago(req, res) {
     return res.json(metodosPago);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar métodos de pago'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar métodos de pago');
   }
 }
 

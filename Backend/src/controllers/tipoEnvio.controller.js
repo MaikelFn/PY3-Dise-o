@@ -1,5 +1,6 @@
 
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 async function listarTiposEnvio(req, res) {
   try {
@@ -19,10 +20,7 @@ async function listarTiposEnvio(req, res) {
     return res.json(tiposEnvio);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar tipos de envío'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar tipos de envío');
   }
 }
 

@@ -1,5 +1,6 @@
 
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar direcciones
 async function listarDirecciones(req, res) {
@@ -22,10 +23,7 @@ async function listarDirecciones(req, res) {
     })));
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar direcciones'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar direcciones');
   }
 }
 
@@ -63,10 +61,7 @@ async function agregarDireccion(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al agregar dirección'
-    });
+    return manejarErrorPostgres(error, res, 'Error al agregar dirección');
   }
 }
 
@@ -107,10 +102,7 @@ async function actualizarDireccion(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al actualizar dirección'
-    });
+    return manejarErrorPostgres(error, res, 'Error al actualizar dirección');
   }
 }
 
@@ -131,10 +123,7 @@ async function eliminarDireccion(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al eliminar dirección'
-    });
+    return manejarErrorPostgres(error, res, 'Error al eliminar dirección');
   }
 }
 

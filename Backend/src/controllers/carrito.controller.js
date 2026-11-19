@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Obtener o crear carrito
 async function obtenerOCrearCarrito(req, res) {
@@ -19,10 +20,7 @@ async function obtenerOCrearCarrito(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al obtener carrito'
-    });
+    return manejarErrorPostgres(error, res, 'Error al obtener carrito');
   }
 }
 
@@ -45,10 +43,7 @@ async function consultarCarrito(req, res) {
     return res.json(carrito);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar carrito'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar carrito');
   }
 }
 
@@ -68,10 +63,7 @@ async function vaciarCarrito(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al vaciar carrito'
-    });
+    return manejarErrorPostgres(error, res, 'Error al vaciar carrito');
   }
 }
 

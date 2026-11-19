@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar imágenes
 async function listarImagenes(req, res) {
@@ -23,10 +24,7 @@ async function listarImagenes(req, res) {
     return res.json(imagenes);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar imágenes'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar imágenes');
   }
 }
 
@@ -80,10 +78,7 @@ async function agregarImagen(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al agregar imagen'
-    });
+    return manejarErrorPostgres(error, res, 'Error al agregar imagen');
   }
 }
 
@@ -124,10 +119,7 @@ async function establecerPrincipal(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al establecer imagen principal'
-    });
+    return manejarErrorPostgres(error, res, 'Error al establecer imagen principal');
   }
 }
 
@@ -159,10 +151,7 @@ async function eliminarImagen(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al eliminar imagen'
-    });
+    return manejarErrorPostgres(error, res, 'Error al eliminar imagen');
   }
 }
 

@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar detalles del carrito
 async function listarDetalles(req, res) {
@@ -13,10 +14,7 @@ async function listarDetalles(req, res) {
     return res.json(resultado.rows);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar detalles del carrito'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar detalles del carrito');
   }
 }
 
@@ -38,10 +36,7 @@ async function agregarDetalle(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al agregar producto al carrito'
-    });
+    return manejarErrorPostgres(error, res, 'Error al agregar producto al carrito');
   }
 }
 
@@ -64,10 +59,7 @@ async function actualizarCantidad(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al actualizar cantidad'
-    });
+    return manejarErrorPostgres(error, res, 'Error al actualizar cantidad');
   }
 }
 
@@ -89,10 +81,7 @@ async function eliminarDetalle(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al eliminar producto del carrito'
-    });
+    return manejarErrorPostgres(error, res, 'Error al eliminar producto del carrito');
   }
 }
 

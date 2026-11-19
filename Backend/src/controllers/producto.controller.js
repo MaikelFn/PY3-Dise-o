@@ -2,6 +2,7 @@ const { getPool } = require('../config/database');
 const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar productos
 async function listarProductos(req, res) {
@@ -33,10 +34,7 @@ async function listarProductos(req, res) {
     })));
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar productos'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar productos');
   }
 }
 
@@ -71,10 +69,7 @@ async function consultarProducto(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar producto'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar producto');
   }
 }
 
@@ -123,10 +118,7 @@ async function crearProducto(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al crear producto'
-    });
+    return manejarErrorPostgres(error, res, 'Error al crear producto');
   }
 }
 
@@ -292,11 +284,7 @@ async function publicarProducto(req, res) {
       }
     }
 
-    console.error('Error al publicar producto:', error);
-    const isValidationError = ['P0001', '23503', '23514', '22003'].includes(error.code);
-    return res.status(isValidationError ? 400 : 500).json({
-      mensaje: isValidationError ? error.message : 'Error al publicar producto.'
-    });
+    return manejarErrorPostgres(error, res, 'Error al publicar producto.');
   } finally {
     if (client) {
       client.release();
@@ -351,10 +339,7 @@ async function actualizarProducto(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al actualizar producto'
-    });
+    return manejarErrorPostgres(error, res, 'Error al actualizar producto');
   }
 }
 
@@ -397,10 +382,7 @@ async function desactivarProducto(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al desactivar producto'
-    });
+    return manejarErrorPostgres(error, res, 'Error al desactivar producto');
   }
 }
 

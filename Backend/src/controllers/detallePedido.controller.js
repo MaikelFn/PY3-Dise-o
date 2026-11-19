@@ -1,5 +1,6 @@
 
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 
 async function listarDetallesPedido(req, res) {
@@ -33,10 +34,7 @@ async function listarDetallesPedido(req, res) {
     return res.json(detalles);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar detalles del pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar detalles del pedido');
   }
 }
 

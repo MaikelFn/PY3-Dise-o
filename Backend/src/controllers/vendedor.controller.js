@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar vendedores
 async function listarVendedores(req, res) {
@@ -21,10 +22,7 @@ async function listarVendedores(req, res) {
     return res.json(vendedores);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar vendedores'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar vendedores');
   }
 }
 
@@ -57,10 +55,7 @@ async function consultarVendedor(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar vendedor'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar vendedor');
   }
 }
 
@@ -94,10 +89,7 @@ async function registrarVendedor(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al registrar vendedor'
-    });
+    return manejarErrorPostgres(error, res, 'Error al registrar vendedor');
   }
 }
 
@@ -139,10 +131,7 @@ async function actualizarVendedor(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al actualizar vendedor'
-    });
+    return manejarErrorPostgres(error, res, 'Error al actualizar vendedor');
   }
 }
 
@@ -172,10 +161,7 @@ async function desactivarVendedor(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al desactivar vendedor'
-    });
+    return manejarErrorPostgres(error, res, 'Error al desactivar vendedor');
   }
 }
 
