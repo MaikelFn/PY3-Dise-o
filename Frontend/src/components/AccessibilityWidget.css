@@ -1,0 +1,258 @@
+.accessibility-widget {
+  position: fixed;
+  z-index: 80;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.accessibility-widget button {
+  font: inherit;
+}
+
+.accessibility-trigger,
+.accessibility-panel {
+  pointer-events: auto;
+  box-shadow: 0 12px 34px rgba(13, 35, 65, 0.2);
+}
+
+.accessibility-trigger {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #fff;
+  border-radius: 16px;
+  color: #fff;
+  padding: 0;
+  background: #fff;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.accessibility-trigger:hover {
+  background: #0e345f;
+  transform: translateY(-2px);
+}
+
+.accessibility-trigger:focus-visible,
+.accessibility-widget button:focus-visible {
+  outline: 3px solid #f47b2b;
+  outline-offset: 3px;
+}
+
+.accessibility-trigger img {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.accessibility-panel {
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(72vh, 430px);
+  overflow-y: auto;
+  border: 1px solid #e4e9ef;
+  border-radius: 15px;
+  padding: 20px;
+  color: #1b2a3d;
+  background: #fff;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.accessibility-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.accessibility-kicker {
+  color: #718198;
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+}
+
+.accessibility-panel h2 {
+  margin: 4px 0 0;
+  color: #102b55;
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+
+.accessibility-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #e5e9ef;
+  border-radius: 9px;
+  color: #53647b;
+  background: #fff;
+  font-size: 1.45rem !important;
+  line-height: 1 !important;
+  cursor: pointer;
+}
+
+.accessibility-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 0;
+  border-top: 1px solid #edf0f4;
+}
+
+.accessibility-option > div:first-child,
+.accessibility-gray-toggle > span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.accessibility-option strong,
+.accessibility-gray-toggle strong {
+  color: #233750;
+  font-size: 0.86rem;
+}
+
+.accessibility-option > div:first-child span,
+.accessibility-gray-toggle small {
+  color: #68778b;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.accessibility-text-controls {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  border: 1px solid #dfe5ec;
+  border-radius: 8px;
+  padding: 3px;
+  background: #f7f9fb;
+}
+
+.accessibility-text-controls button {
+  min-width: 34px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  color: #24466f;
+  background: transparent;
+  font-size: 0.8rem !important;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.accessibility-text-controls button[aria-pressed="true"] {
+  color: #fff;
+  background: #174b84;
+}
+
+.accessibility-text-controls button:disabled {
+  cursor: default;
+}
+
+.accessibility-gray-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-top: 1px solid #edf0f4;
+  padding: 15px 0;
+  text-align: left;
+  background: #fff;
+  cursor: pointer;
+}
+
+.accessibility-switch {
+  display: flex;
+  width: 40px;
+  height: 23px;
+  flex: 0 0 auto;
+  align-items: center;
+  border-radius: 20px;
+  padding: 3px;
+  background: #aab4c1;
+  transition: background 160ms ease;
+}
+
+.accessibility-switch i {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 32, 48, 0.22);
+  transition: transform 160ms ease;
+}
+
+.accessibility-switch.is-on {
+  background: #2e6e4a;
+}
+
+.accessibility-switch.is-on i {
+  transform: translateX(17px);
+}
+
+.accessibility-reset {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #dce4ec;
+  border-radius: 8px;
+  color: #174b84;
+  background: #f8fafc;
+  font-size: 0.8rem !important;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.accessibility-reset:hover,
+.accessibility-close:hover {
+  background: #f0f4f8;
+}
+
+#root.accessibility-grayscale > * {
+  filter: grayscale(1);
+}
+
+html[data-accessibility-text-size="small"] {
+  font-size: 90%;
+}
+
+html[data-accessibility-text-size="large"] {
+  font-size: 115%;
+}
+
+@media (max-width: 520px) {
+  .accessibility-widget {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .accessibility-trigger {
+    width: 54px;
+    height: 54px;
+  }
+
+  .accessibility-panel {
+    padding: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accessibility-widget *,
+  .accessibility-widget *::before,
+  .accessibility-widget *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

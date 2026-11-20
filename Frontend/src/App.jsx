@@ -11,6 +11,7 @@ import {
 import AuthDialog from './components/AuthDialog'
 import CatalogPage from './components/CatalogPage'
 import CartDialog from './components/CartDialog'
+import AccessibilityWidget from './components/AccessibilityWidget'
 import Icon from './components/Icon'
 import ProductCard from './components/ProductCard'
 import RoleDashboard from './components/RoleDashboard'
@@ -86,9 +87,20 @@ function App() {
   const [cartError, setCartError] = useState('')
   const [dialog, setDialog] = useState('')
   const [toast, setToast] = useState('')
+  const [accessibilityTextSize, setAccessibilityTextSize] = useState('normal')
+  const [accessibilityGrayscale, setAccessibilityGrayscale] = useState(false)
   const toastTimeout = useRef(null)
   const currentRole = normalizeRole(user?.rol)
   const cartCount = cartItems.reduce((total, item) => total + Number(item.Cantidad || 0), 0)
+  const accessibilityWidget = (
+    <AccessibilityWidget
+      grayscale={accessibilityGrayscale}
+      onChangeTextSize={setAccessibilityTextSize}
+      onReset={() => { setAccessibilityTextSize('normal'); setAccessibilityGrayscale(false) }}
+      onToggleGrayscale={() => setAccessibilityGrayscale((current) => !current)}
+      textSize={accessibilityTextSize}
+    />
+  )
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -104,6 +116,17 @@ function App() {
   }, [])
 
   useEffect(() => () => window.clearTimeout(toastTimeout.current), [])
+
+  useEffect(() => {
+    const root = document.getElementById('root')
+    document.documentElement.dataset.accessibilityTextSize = accessibilityTextSize
+    root?.classList.toggle('accessibility-grayscale', accessibilityGrayscale)
+
+    return () => {
+      delete document.documentElement.dataset.accessibilityTextSize
+      root?.classList.remove('accessibility-grayscale')
+    }
+  }, [accessibilityGrayscale, accessibilityTextSize])
 
   useEffect(() => {
     const request = window.setTimeout(() => { loadCatalog() }, 0)
@@ -282,6 +305,7 @@ function App() {
         {dialog === 'auth' && (
           <AuthDialog user={user} onAuthenticated={handleAuthenticated} onClose={() => setDialog('')} onLoggedOut={handleLogout} onOpenDashboard={() => { setDashboardVisible(true); setDialog('') }} />
         )}
+        {accessibilityWidget}
       </>
     )
   }
@@ -495,6 +519,7 @@ function App() {
         />
       )}
       <div aria-atomic="true" aria-live="polite" className={`toast${toast ? ' visible' : ''}`} role="status">{toast}</div>
+      {accessibilityWidget}
     </>
   )
 }

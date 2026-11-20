@@ -34,6 +34,7 @@ Para desplegar el frontend en otro origen, configura `VITE_API_URL` con la URL b
 - Panel de comprador con perfil y pedidos.
 - Panel de vendedor con publicación de productos (incluye imagen e inventario) y consulta de pedidos de su tienda.
 - Panel de administrador con consulta del catálogo, mantenimiento de categorías y listado global de pedidos.
+- Accesibilidad desde el botón flotante con el símbolo de acceso: tamaño de texto reducido, normal o ampliado, modo de grises y restablecimiento de ajustes. Los cambios se aplican también al catálogo y a los paneles durante la navegación.
 
 Las imágenes de productos se guardan en el almacenamiento local del backend. En despliegues, `Backend/public/productos` debe montarse en almacenamiento persistente.
 
