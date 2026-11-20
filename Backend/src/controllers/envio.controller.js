@@ -1,5 +1,6 @@
 
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
 
@@ -36,10 +37,7 @@ async function consultarEnvio(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar envío'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar envío');
   }
 }
 
@@ -80,10 +78,7 @@ async function consultarEnvioPorPedido(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar envío'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar envío');
   }
 }
 
@@ -144,10 +139,7 @@ async function actualizarEstadoEnvio(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al actualizar envío'
-    });
+    return manejarErrorPostgres(error, res, 'Error al actualizar envío');
   }
 }
 

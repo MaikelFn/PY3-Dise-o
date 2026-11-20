@@ -2,6 +2,7 @@
 const { getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Registrar pago
 async function registrarPago(req, res) {
@@ -30,10 +31,7 @@ async function registrarPago(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al registrar pago'
-    });
+    return manejarErrorPostgres(error, res, 'Error al registrar pago');
   }
 }
 
@@ -69,10 +67,7 @@ async function consultarPago(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar pago'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar pago');
   }
 }
 
@@ -97,10 +92,7 @@ async function listarPagosPorPedido(req, res) {
     })));
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar pagos'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar pagos');
   }
 }
 
@@ -152,10 +144,7 @@ async function aprobarPago(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al aprobar pago'
-    });
+    return manejarErrorPostgres(error, res, 'Error al aprobar pago');
   }
 }
 
@@ -202,10 +191,7 @@ async function rechazarPago(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al rechazar pago'
-    });
+    return manejarErrorPostgres(error, res, 'Error al rechazar pago');
   }
 }
 

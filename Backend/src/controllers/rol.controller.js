@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Listar roles
 async function listarRoles(req, res) {
@@ -18,10 +19,7 @@ async function listarRoles(req, res) {
     return res.json(roles);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar roles'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar roles');
   }
 }
 

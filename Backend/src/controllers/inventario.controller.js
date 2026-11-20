@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Consultar inventario
 async function consultarInventario(req, res) {
@@ -28,10 +29,7 @@ async function consultarInventario(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar inventario'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar inventario');
   }
 }
 
@@ -76,10 +74,7 @@ async function agregarExistencias(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al agregar existencias'
-    });
+    return manejarErrorPostgres(error, res, 'Error al agregar existencias');
   }
 }
 

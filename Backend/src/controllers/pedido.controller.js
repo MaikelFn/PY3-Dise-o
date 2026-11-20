@@ -1,6 +1,7 @@
 
 const { getPool } = require('../config/database');
 const { publicarEvento } = require('../events/pedido.events');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 // Verificar acceso al pedido
 async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
@@ -30,10 +31,7 @@ async function verificarAccesoPedido(req, res, next) {
     next();
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al verificar acceso al pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al verificar acceso al pedido');
   }
 }
 
@@ -62,11 +60,7 @@ async function crearPedido(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    const isValidationError = ['P0001', '23503', '23514', '22003'].includes(error.code);
-    return res.status(isValidationError ? 400 : 500).json({
-      mensaje: isValidationError ? error.message : 'Error al crear pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al crear pedido');
   }
 }
 
@@ -109,10 +103,7 @@ async function consultarPedido(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al consultar pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al consultar pedido');
   }
 }
 
@@ -137,10 +128,7 @@ async function listarPedidos(req, res) {
     })));
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar pedidos'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar pedidos');
   }
 }
 
@@ -160,10 +148,7 @@ async function listarPedidosAdministrador(_req, res) {
       Total: p.total
     })));
   } catch (error) {
-    console.error('Error al listar pedidos para administración:', error);
-    return res.status(500).json({
-      mensaje: 'Error al listar pedidos para administración'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar pedidos para administración');
   }
 }
 
@@ -184,10 +169,7 @@ async function listarPedidosVendedor(req, res) {
       SubtotalVendedor: p.subtotalvendedor
     })));
   } catch (error) {
-    console.error('Error al listar ventas del vendedor:', error);
-    return res.status(500).json({
-      mensaje: 'Error al listar ventas de la tienda'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar ventas de la tienda');
   }
 }
 
@@ -216,10 +198,7 @@ async function confirmarPedido(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al confirmar pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al confirmar pedido');
   }
 }
 
@@ -261,10 +240,7 @@ async function cancelarPedido(req, res) {
     });
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al cancelar pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al cancelar pedido');
   }
 }
 

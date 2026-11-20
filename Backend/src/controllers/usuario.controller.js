@@ -1,4 +1,5 @@
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 function mapearUsuario(usuario) {
   return {
@@ -11,38 +12,6 @@ function mapearUsuario(usuario) {
     FechaRegistro: usuario.fecharegistro,
     Activo: usuario.activo
   };
-}
-
-function manejarErrorPostgres(error, res, accion) {
-  if (error.code === '23505') {
-    return res.status(409).json({
-      mensaje: 'El correo ya está registrado'
-    });
-  }
-
-  if (error.code === '22P02') {
-    return res.status(400).json({
-      mensaje: 'El identificador de usuario no es válido'
-    });
-  }
-
-  if (error.code === 'P0001') {
-    const mensaje = String(error.message || '');
-    if (/no (existe|encontr)/i.test(mensaje)) {
-      return res.status(404).json({
-        mensaje: 'Usuario no encontrado'
-      });
-    }
-
-    return res.status(400).json({
-      mensaje: mensaje || `Error al ${accion} usuario`
-    });
-  }
-
-  console.error(`Error al ${accion} usuario:`, error);
-  return res.status(500).json({
-    mensaje: `Error al ${accion} usuario`
-  });
 }
 
 async function consultarUsuario(req, res) {
@@ -77,7 +46,7 @@ async function consultarUsuario(req, res) {
       usuario: mapearUsuario(resultado.rows[0])
     });
   } catch (error) {
-    return manejarErrorPostgres(error, res, 'consultar');
+    return manejarErrorPostgres(error, res, 'Error al consultar usuario');
   }
 }
 
@@ -127,16 +96,7 @@ async function actualizarUsuario(req, res) {
       usuario: mapearUsuario(resultado.rows[0])
     });
   } catch (error) {
-    if (
-      error.message?.includes('correo ya') ||
-      error.message?.toLowerCase().includes('correo duplicado')
-    ) {
-      return res.status(409).json({
-        mensaje: 'El correo ya está registrado'
-      });
-    }
-
-    return manejarErrorPostgres(error, res, 'actualizar');
+    return manejarErrorPostgres(error, res, 'Error al actualizar usuario');
   }
 }
 
@@ -172,7 +132,7 @@ async function desactivarUsuario(req, res) {
       usuario: mapearUsuario(resultado.rows[0])
     });
   } catch (error) {
-    return manejarErrorPostgres(error, res, 'desactivar');
+    return manejarErrorPostgres(error, res, 'Error al desactivar usuario');
   }
 }
 

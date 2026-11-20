@@ -1,5 +1,6 @@
 
 const { getPool } = require('../config/database');
+const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
 async function listarEstados(req, res) {
   try {
@@ -18,10 +19,7 @@ async function listarEstados(req, res) {
     return res.json(estados);
 
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      mensaje: 'Error al listar estados de pedido'
-    });
+    return manejarErrorPostgres(error, res, 'Error al listar estados de pedido');
   }
 }
 
