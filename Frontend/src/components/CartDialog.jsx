@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   createAddress,
-  createOrder,
+  createSimulatedCheckout,
   getAddresses,
   getShippingTypes,
   removeCartItem,
@@ -138,7 +138,7 @@ function CartDialog({
     setCheckoutError('')
     setCheckoutBusy(true)
     try {
-      const response = await createOrder({
+      const response = await createSimulatedCheckout({
         direccionID: Number(selectedAddressId),
         tipoEnvioID: Number(selectedShippingTypeId)
       })
@@ -181,8 +181,8 @@ function CartDialog({
       {orderCreated ? (
         <div className="checkout-success" role="status">
           <span aria-hidden="true">✓</span>
-          <h3>Pedido #{orderCreated} registrado</h3>
-          <p>Quedó pendiente de pago y las existencias fueron reservadas. No se realizó ningún cobro.</p>
+          <h3>Pedido #{orderCreated} confirmado</h3>
+          <p>El pago de prueba se aprobó y el pedido quedó confirmado. No se solicitaron datos de tarjeta ni se transfirió dinero real.</p>
           <button className="dialog-primary" onClick={onClose} type="button">Continuar</button>
         </div>
       ) : loading ? (
@@ -271,15 +271,17 @@ function CartDialog({
                   <div className="checkout-total"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div>
                   <div className="checkout-total"><span>Envío</span><strong>{formatPrice(shippingCost)}</strong></div>
                   <div className="checkout-total checkout-grand-total"><span>Total estimado</span><strong>{formatPrice(subtotal + shippingCost)}</strong></div>
+                  <p className="cart-disclaimer checkout-simulation-notice">
+                    Pago simulado por transferencia: no pediremos datos bancarios ni se moverá dinero real. El pedido confirmado aparecerá como ingreso simulado en la tienda vendedora.
+                  </p>
                   <button
                     className="dialog-primary"
                     disabled={checkoutBusy || !selectedAddressId || !selectedShippingTypeId || addingAddress}
                     onClick={placeOrder}
                     type="button"
                   >
-                    {checkoutBusy ? 'Registrando…' : 'Registrar pedido pendiente'}
+                    {checkoutBusy ? 'Confirmando…' : 'Confirmar pedido y simular pago'}
                   </button>
-                  <p className="cart-disclaimer">Este flujo reserva inventario y registra el pedido; no procesa un pago real.</p>
                 </>
               )}
             </section>

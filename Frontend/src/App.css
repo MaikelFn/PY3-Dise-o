@@ -2053,6 +2053,14 @@ main,
   font-weight: 750;
 }
 
+.checkout-simulation-notice {
+  border-left: 3px solid #f47b2b;
+  padding: 8px 10px;
+  color: #52657d;
+  background: #fff8f2;
+  line-height: 1.5;
+}
+
 .checkout-success {
   display: grid;
   justify-items: center;

@@ -30,9 +30,9 @@ Para desplegar el frontend en otro origen, configura `VITE_API_URL` con la URL b
 
 - Registro e inicio/cierre de sesión con cookie de sesión.
 - Catálogo y categorías consultados desde la API.
-- Carrito y checkout con selección o creación de dirección; los pedidos se registran pendientes, reservan existencias y no procesan pagos reales.
+- Carrito y checkout con selección o creación de dirección; el pedido reserva existencias y confirma un pago simulado por transferencia, sin solicitar datos bancarios ni mover dinero real.
 - Panel de comprador con perfil y pedidos.
-- Panel de vendedor con publicación de productos (incluye imagen e inventario) y consulta de pedidos de su tienda.
+- Panel de vendedor con publicación de productos (incluye imagen e inventario), pedidos de su tienda e ingresos simulados de pedidos confirmados.
 - Panel de administrador con consulta del catálogo, mantenimiento de categorías y listado global de pedidos.
 - Accesibilidad desde el botón flotante con el símbolo de acceso: tamaño de texto reducido, normal o ampliado, modo de grises y restablecimiento de ajustes. Los cambios se aplican también al catálogo y a los paneles durante la navegación.
 

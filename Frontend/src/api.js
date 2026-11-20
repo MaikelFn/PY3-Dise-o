@@ -148,6 +148,9 @@ export const getShippingTypes = () =>
 export const createOrder = (details) =>
   apiRequest('/pedidos', { method: 'POST', body: details })
 
+export const createSimulatedCheckout = (details) =>
+  apiRequest('/pedidos/checkout-simulado', { method: 'POST', body: details })
+
 export const getUser = (userId) =>
   apiRequest(`/usuarios/${userId}`)
 

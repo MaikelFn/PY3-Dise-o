@@ -113,6 +113,16 @@ function date(value) {
     : '—'
 }
 
+function isOrderPaymentConfirmed(status) {
+  const normalized = String(status || '')
+    .toLocaleLowerCase('es')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  return ['confirmado', 'pagado', 'enviado', 'despachado', 'entregado']
+    .some((value) => normalized.includes(value))
+}
+
 function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole, onCatalogChanged }) {
   const [activeSection, setActiveSection] = useState('overview')
   const [loading, setLoading] = useState(true)
@@ -124,6 +134,15 @@ function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole,
   const [profile, setProfile] = useState(null)
   const [seller, setSeller] = useState(null)
   const [sellerProducts, setSellerProducts] = useState([])
+  const simulatedIncome = useMemo(
+    () => roleOrders.reduce(
+      (total, order) => isOrderPaymentConfirmed(order.Estado)
+        ? total + Number(order.SubtotalVendedor || 0)
+        : total,
+      0
+    ),
+    [roleOrders]
+  )
   const [productFormOpen, setProductFormOpen] = useState(false)
   const [editingProductId, setEditingProductId] = useState(null)
   const [productForm, setProductForm] = useState({ categoriaID: '', nombre: '', descripcion: '', precio: '', cantidad: '' })
@@ -356,7 +375,7 @@ function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole,
         <div className="panel-heading">
           <div>
             <h2>{isAdmin ? 'Pedidos del marketplace' : 'Pedidos de mi tienda'}</h2>
-            <p>{isAdmin ? 'Pedidos de todos los compradores.' : 'Solo se muestran productos vendidos por tu tienda.'}</p>
+            <p>{isAdmin ? 'Pedidos de todos los compradores.' : 'Pedidos con productos de tu tienda; el ingreso se confirma al aprobar el pago simulado.'}</p>
           </div>
           <div className="panel-heading-actions">
             <span className="count-pill">{roleOrders.length} pedidos</span>
@@ -382,7 +401,7 @@ function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole,
                   <th>Comprador</th>
                   <th>Unidades</th>
                   <th>Estado</th>
-                  <th>{isAdmin ? 'Total' : 'Subtotal de tienda'}</th>
+                  <th>{isAdmin ? 'Total' : 'Ingreso simulado'}</th>
                 </tr>
               </thead>
               <tbody>{roleOrders.map((order) => (
@@ -392,7 +411,11 @@ function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole,
                   <td>{order.Comprador}</td>
                   <td>{order.CantidadProductos}</td>
                   <td>{order.Estado}</td>
-                  <td><strong className="table-primary">{money(isAdmin ? order.Total : order.SubtotalVendedor)}</strong></td>
+                  <td><strong className="table-primary">{isAdmin
+                    ? money(order.Total)
+                    : isOrderPaymentConfirmed(order.Estado)
+                      ? money(order.SubtotalVendedor)
+                      : 'Pendiente'}</strong></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -536,6 +559,7 @@ function RoleDashboard({ role, user, categories, products, onExit, onSwitchRole,
             <div className="stats-grid">
               <StatCard label="Productos publicados" value={sellerProducts.length} icon="box" tone="stat-blue" />
               <StatCard label="Pedidos recibidos" value={roleOrders.length} icon="clipboard" tone="stat-orange" />
+              <StatCard label="Ingresos simulados" value={money(simulatedIncome)} icon="chart" tone="stat-green" />
             </div>
             {renderRoleOrders()}
             {renderSellerProducts()}

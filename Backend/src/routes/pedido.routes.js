@@ -25,6 +25,11 @@ router.get(
 router.get('/', pedido.listarPedidos);
 router.get('/:id', pedido.consultarPedido);
 router.post('/', verificarRol('Comprador'), pedido.crearPedido);
+router.post(
+  '/checkout-simulado',
+  verificarRol('Comprador'),
+  pedido.crearPedidoConPagoSimulado
+);
 
 router.post(
   '/:id/confirmar',

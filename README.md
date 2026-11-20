@@ -105,7 +105,7 @@ Abre la dirección que muestra Vite, normalmente `http://localhost:5173`. Vite r
 
 Explora el catálogo, las categorías y la búsqueda. Usa las cuentas de demostración que aparecen al final de este README para revisar las vistas de comprador, vendedor y administrador.
 
-**Importante:** una compra crea un pedido pendiente y reserva existencias en la base conectada, aunque no realiza un cobro real. Publicar productos también escribe en esa base. Evita hacer compras o publicaciones de prueba en la base compartida sin autorización.
+**Importante:** una compra de prueba confirma un pedido y reserva existencias en la base conectada mediante una transferencia simulada. No solicita datos bancarios ni realiza un cobro real; el ingreso que ve el vendedor también es solo una simulación. Publicar productos y completar compras modifica datos persistentes. Evita hacer pruebas en la base compartida sin autorización.
 
 Las imágenes que se carguen durante la revisión se guardan en `Backend/public/productos` en esa computadora; no se guardan en Git.
 
