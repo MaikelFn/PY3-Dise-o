@@ -49,7 +49,7 @@ async function crearPedido(req, res) {
 
     const pedidoID = resultado.rows[0].pedidoid;
 
-    await publicarEvento('pedido.creado', {
+    await publicarEvento('pedido.z', {
       usuarioID: req.session.usuario.id,
       pedidoID
     });

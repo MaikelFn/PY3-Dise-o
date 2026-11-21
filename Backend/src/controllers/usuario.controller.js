@@ -14,6 +14,21 @@ function mapearUsuario(usuario) {
   };
 }
 
+async function listarUsuarios(req, res) {
+  try {
+    const conexion = await getPool();
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_usuarios_listar()'
+    );
+
+    return res.json(
+      resultado.rows.map(mapearUsuario)
+    );
+  } catch (error) {
+    return manejarErrorPostgres(error, res, 'Error al listar usuarios');
+  }
+}
+
 async function consultarUsuario(req, res) {
   try {
     const usuarioID = Number(req.params.id);
@@ -136,8 +151,36 @@ async function desactivarUsuario(req, res) {
   }
 }
 
+async function asignarRol(req, res) {
+  try {
+    const usuarioID = Number(req.params.id);
+    const rolID = Number(req.body?.rolID);
+
+    const conexion = await getPool();
+    const resultado = await conexion.query(
+      'SELECT * FROM public.sp_usuarios_asignarrol($1, $2)',
+      [usuarioID, rolID]
+    );
+
+    if (!resultado.rows.length) {
+      return res.status(404).json({
+        mensaje: 'Usuario no encontrado'
+      });
+    }
+
+    return res.json({
+      mensaje: 'Rol asignado correctamente',
+      usuario: mapearUsuario(resultado.rows[0])
+    });
+  } catch (error) {
+    return manejarErrorPostgres(error, res, 'Error al asignar rol');
+  }
+}
+
 module.exports = {
+  listarUsuarios,
   consultarUsuario,
   actualizarUsuario,
-  desactivarUsuario
+  desactivarUsuario,
+  asignarRol
 };
