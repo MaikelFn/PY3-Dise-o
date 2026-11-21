@@ -184,20 +184,32 @@ function App() {
       .catch((requestError) => setError(requestError.message))
   }, [user])
 
-  async function filterProducts(event) {
+  async function filterProducts(event, nextCategoryId = categoryId, nextSearch = search) {
     event?.preventDefault()
     setCatalogLoading(true)
     setError('')
+    setCategoryId(nextCategoryId)
     try {
       setProducts(await getProducts({
-        categoryId: categoryId || undefined,
-        search
+        categoryId: nextCategoryId || undefined,
+        search: nextSearch
       }))
+      setCategoryDetail(
+        categories.find((category) => String(category.CategoriaID) === String(nextCategoryId)) || null
+      )
     } catch (requestError) {
       setError(requestError.message)
     } finally {
       setCatalogLoading(false)
     }
+  }
+
+  async function browseCategory(nextCategoryId) {
+    await filterProducts(null, nextCategoryId, search)
+    document.getElementById('catalog-products')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
   }
 
   async function handleCategoryChange(categoryId) {
@@ -309,6 +321,7 @@ function App() {
       setSelectedAddressId(String(address.DireccionID))
       setNewAddress({ provincia: '', canton: '', distrito: '', detalle: '' })
       setAddingAddress(false)
+      setMessage('Dirección agregada.')
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -1059,7 +1072,7 @@ function App() {
   if (sessionLoading) {
     return (
       <div className="storefront">
-        <main><section className="app-dialog"><p>Cargando sesión...</p></section></main>
+        <main className="account-main"><section className="app-dialog"><p>Cargando sesión...</p></section></main>
       </div>
     )
   }
@@ -1075,15 +1088,16 @@ function App() {
           <a aria-label="ClickMarket, ir al inicio" className="brand-link" href="/">
             <img alt="ClickMarket" src={clickMarketLogo} />
           </a>
-          <form className="search-form" onSubmit={filterProducts}>
+          <form className="search-form" onSubmit={filterProducts} role="search">
             <input
+              aria-label="Buscar productos"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Tu próximo producto está aquí"
               value={search}
             />
             <button type="submit">Buscar</button>
           </form>
-          <div className="header-actions">
+          <nav aria-label="Acciones de cuenta" className="header-actions">
             {user && <button className="header-link" type="button">
               <span>{user.nombre}</span>
             </button>}
@@ -1117,11 +1131,40 @@ function App() {
             <button className="header-link" type="button" onClick={openAccount}>
               {user ? 'Mi cuenta' : 'Iniciar sesión'}
             </button>
-          </div>
+          </nav>
         </div>
+        {view === 'catalog' && (
+          <nav aria-label="Explorar catálogo" className="shop-category-nav">
+            <div className="shop-category-nav-inner">
+              <a href="#shop-categories">Categorías</a>
+              <button
+                aria-pressed={!categoryId}
+                className={!categoryId ? 'is-active' : ''}
+                onClick={() => browseCategory('')}
+                type="button"
+              >
+                Ver todo
+              </button>
+              {categories.map((category) => {
+                const id = String(category.CategoriaID)
+                return (
+                  <button
+                    aria-pressed={categoryId === id}
+                    className={categoryId === id ? 'is-active' : ''}
+                    key={category.CategoriaID}
+                    onClick={() => browseCategory(id)}
+                    type="button"
+                  >
+                    {category.Nombre}
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        )}
       </header>
 
-      <main>
+      <main className={view === 'account' ? 'account-main' : 'page-main'}>
         {view === 'notifications' ? (
           <section className="catalog-view" aria-labelledby="notifications-title">
             <h2 id="notifications-title">Notificaciones</h2>
@@ -1682,97 +1725,220 @@ function App() {
             )}
           </section>
         ) : view === 'catalog' ? (
-          <section className="catalog-view" aria-labelledby="catalog-title">
-            <h2 id="catalog-title">Catálogo</h2>
+          <section className="catalog-view shop-catalog" aria-labelledby="catalog-title">
+            <section aria-labelledby="shop-hero-title" className="shop-hero">
+              <div className="shop-hero-copy">
+                <span className="shop-eyebrow">TU TIENDA EN LÍNEA EN COSTA RICA</span>
+                <h1 id="shop-hero-title">Encuentra eso que buscas, <em>más fácil.</em></h1>
+                <p>Explora productos de distintas categorías y encuentra todo para tu día a día en un solo lugar.</p>
+                <a className="shop-hero-cta" href="#catalog-products">
+                  Explorar productos
+                  <svg aria-hidden="true" viewBox="0 0 20 20">
+                    <path d="M4 10h12m-5-5 5 5-5 5" />
+                  </svg>
+                </a>
+                <div className="shop-hero-note">
+                  <span aria-hidden="true">✓</span>
+                  Compra sencilla, con precios en colones
+                </div>
+              </div>
+              <div className="shop-hero-visual">
+                <div className="shop-hero-orbit" aria-hidden="true" />
+                <div className="shop-hero-product-image">
+                  {products[0]?.ImagenURL ? (
+                    <img alt={products[0].Nombre} src={resolveImageUrl(products[0].ImagenURL)} />
+                  ) : (
+                    <span aria-hidden="true">CM</span>
+                  )}
+                </div>
+                {products[0] && (
+                  <div className="shop-hero-product-card">
+                    <span>Del catálogo</span>
+                    <strong>{products[0].Nombre}</strong>
+                    <b>₡{Number(products[0].Precio || 0).toLocaleString('es-CR')}</b>
+                  </div>
+                )}
+              </div>
+            </section>
 
             {error && <p className="dialog-error" role="alert">{error}</p>}
 
-            <form className="catalog-filter" onSubmit={filterProducts}>
-              <label>
-                Categoría
-                <select
-                  onChange={(event) => handleCategoryChange(event.target.value)}
-                  value={categoryId}
-                >
-                  <option value="">Todas</option>
-                  {categories.map((category) => (
-                    <option key={category.CategoriaID} value={category.CategoriaID}>
-                      {category.Nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button className="dialog-primary" type="submit" disabled={catalogLoading}>
-                {catalogLoading ? 'Cargando...' : 'Aplicar filtro'}
-              </button>
-            </form>
+            <div className="shop-benefits">
+              <article>
+                <span aria-hidden="true">₡</span>
+                <div><strong>Precios claros</strong><small>Consulta los precios en colones.</small></div>
+              </article>
+              <article>
+                <span aria-hidden="true">⌕</span>
+                <div><strong>Explora a tu manera</strong><small>Busca por nombre o categoría.</small></div>
+              </article>
+              <article>
+                <span aria-hidden="true">✓</span>
+                <div><strong>Compra simple</strong><small>Carrito y pedidos en un solo lugar.</small></div>
+              </article>
+            </div>
 
-            {categoryDetail && (
-              <div className="catalog-card">
-                <h3>{categoryDetail.Nombre}</h3>
-                <p>{categoryDetail.Descripcion || 'Sin descripción'}</p>
-              </div>
-            )}
-
-            {catalogLoading ? (
-              <p>Cargando productos...</p>
-            ) : products.length === 0 ? (
-              <p>No hay productos disponibles.</p>
-            ) : (
-              <>
-                {selectedProductDetail && (
-                  <div className="catalog-card">
-                    <h3>{selectedProductDetail.product.Nombre}</h3>
-                    <p>{selectedProductDetail.product.Descripcion || 'Sin descripción'}</p>
-                    <strong>₡{Number(selectedProductDetail.product.Precio || 0).toLocaleString('es-CR')}</strong>
-                    <p>Existencias: {Number(selectedProductDetail.inventory?.CantidadDisponible ?? selectedProductDetail.inventory?.cantidaddisponible ?? 0)}</p>
-                    {selectedProductDetail.images.length > 0 && (
-                      <div className="product-detail-images">
-                        {selectedProductDetail.images.map((image) => (
-                          <div className={`product-detail-image${image.EsPrincipal ?? image.esprincipal ? ' is-main' : ''}`} key={image.ImagenID ?? image.imagenid}>
-                            <img alt={(image.EsPrincipal ?? image.esprincipal) ? `Imagen principal de ${selectedProductDetail.product.Nombre}` : `${selectedProductDetail.product.Nombre}`} src={resolveImageUrl(image.ImagenURL ?? image.imagenurl)} />
-                            {(image.EsPrincipal ?? image.esprincipal) && <span>Portada</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setSelectedProductDetail(null)}>Cerrar detalle</button>
+            {categories.length > 0 && (
+              <section aria-labelledby="shop-categories-title" className="shop-categories" id="shop-categories">
+                <div className="shop-section-heading">
+                  <div>
+                    <span className="shop-section-eyebrow">ENCUENTRA LO QUE NECESITAS</span>
+                    <h2 id="shop-categories-title">Explora por categoría</h2>
                   </div>
-                )}
-              <div className="catalog-grid">
-                {products.map((product) => (
-                  <article className="catalog-card" key={product.ProductoID}>
-                    {product.ImagenURL && (
-                      <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />
-                    )}
-                    <h3>{product.Nombre}</h3>
-                    <p>{product.Descripcion || 'Sin descripción'}</p>
-                    <strong>₡{Number(product.Precio || 0).toLocaleString('es-CR')}</strong>
-                    <span>Existencias: {Number(product.CantidadDisponible || 0)}</span>
-                    <button
-                      className="admin-action-button admin-action-secondary"
-                      disabled={busy}
-                      onClick={() => openProductDetail(product.ProductoID)}
-                      type="button"
-                    >
-                      Ver detalle
-                    </button>
-                    <button
-                      className="dialog-primary"
-                      disabled={busy || Number(product.CantidadDisponible || 0) < 1}
-                      onClick={() => handleAddToCart(product.ProductoID)}
-                      type="button"
-                    >
-                      Agregar al carrito
-                    </button>
-                  </article>
-                ))}
-              </div>
-              </>
+                  <span className="shop-section-caption">{categories.length} categorías</span>
+                </div>
+                <div className="shop-category-grid">
+                  {categories.map((category, index) => {
+                    const id = String(category.CategoriaID)
+                    return (
+                      <button
+                        aria-pressed={categoryId === id}
+                        className={`shop-category-card shop-category-tone-${index % 6}${categoryId === id ? ' is-selected' : ''}`}
+                        key={category.CategoriaID}
+                        onClick={() => browseCategory(id)}
+                        type="button"
+                      >
+                        <span aria-hidden="true">{category.Nombre?.charAt(0)?.toUpperCase() || '•'}</span>
+                        <strong>{category.Nombre}</strong>
+                        <svg aria-hidden="true" viewBox="0 0 20 20">
+                          <path d="M4 10h12m-5-5 5 5-5 5" />
+                        </svg>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
             )}
+
+            <section aria-labelledby="catalog-title" className="shop-products-section" id="catalog-products">
+              <div className="shop-products-heading">
+                <div>
+                  <span className="shop-section-eyebrow">SELECCIÓN PARA TI</span>
+                  <h2 id="catalog-title">{categoryDetail?.Nombre ? `Productos de ${categoryDetail.Nombre}` : 'Descubre productos'}</h2>
+                  <p>Encuentra tu próximo favorito entre los productos disponibles.</p>
+                </div>
+                {!catalogLoading && (
+                  <span className="shop-product-count">
+                    {products.length} {products.length === 1 ? 'producto' : 'productos'}
+                  </span>
+                )}
+              </div>
+
+              <form className="catalog-filter shop-catalog-filter" onSubmit={filterProducts}>
+                <label>
+                  Filtrar por categoría
+                  <select
+                    onChange={(event) => handleCategoryChange(event.target.value)}
+                    value={categoryId}
+                  >
+                    <option value="">Todas las categorías</option>
+                    {categories.map((category) => (
+                      <option key={category.CategoriaID} value={category.CategoriaID}>
+                        {category.Nombre}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button className="dialog-primary" type="submit" disabled={catalogLoading}>
+                  {catalogLoading ? 'Cargando...' : 'Aplicar filtro'}
+                </button>
+              </form>
+
+              {categoryDetail?.Descripcion && (
+                <p className="shop-category-description">{categoryDetail.Descripcion}</p>
+              )}
+
+              {selectedProductDetail && (
+                <div className="catalog-card shop-product-detail">
+                  <h3>{selectedProductDetail.product.Nombre}</h3>
+                  <p>{selectedProductDetail.product.Descripcion || 'Sin descripción'}</p>
+                  <strong>₡{Number(selectedProductDetail.product.Precio || 0).toLocaleString('es-CR')}</strong>
+                  <p>Existencias: {Number(selectedProductDetail.inventory?.CantidadDisponible ?? selectedProductDetail.inventory?.cantidaddisponible ?? 0)}</p>
+                  {selectedProductDetail.images.length > 0 && (
+                    <div className="product-detail-images">
+                      {selectedProductDetail.images.map((image) => (
+                        <div className={`product-detail-image${image.EsPrincipal ?? image.esprincipal ? ' is-main' : ''}`} key={image.ImagenID ?? image.imagenid}>
+                          <img alt={(image.EsPrincipal ?? image.esprincipal) ? `Imagen principal de ${selectedProductDetail.product.Nombre}` : `${selectedProductDetail.product.Nombre}`} src={resolveImageUrl(image.ImagenURL ?? image.imagenurl)} />
+                          {(image.EsPrincipal ?? image.esprincipal) && <span>Portada</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setSelectedProductDetail(null)}>Cerrar detalle</button>
+                </div>
+              )}
+
+              {catalogLoading ? (
+                <p className="shop-loading" role="status">Cargando productos...</p>
+              ) : products.length === 0 ? (
+                <div className="shop-empty-state">
+                  <span aria-hidden="true">⌕</span>
+                  <h3>No encontramos productos</h3>
+                  <p>Prueba con otra búsqueda o explora todas las categorías.</p>
+                  <button
+                    className="admin-action-button admin-action-secondary"
+                    onClick={() => {
+                      setSearch('')
+                      filterProducts(null, '', '')
+                    }}
+                    type="button"
+                  >
+                    Ver todos los productos
+                  </button>
+                </div>
+              ) : (
+                <div className="catalog-grid shop-product-grid">
+                  {products.map((product) => {
+                    const stock = Number(product.CantidadDisponible || 0)
+                    return (
+                      <article className="catalog-card shop-product-card" key={product.ProductoID}>
+                        <div className="shop-product-image">
+                          {product.ImagenURL ? (
+                            <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />
+                          ) : (
+                            <span aria-hidden="true">CM</span>
+                          )}
+                          <span className={`shop-stock-badge${stock < 1 ? ' is-unavailable' : ''}`}>
+                            {stock > 0 ? 'Disponible' : 'Agotado'}
+                          </span>
+                        </div>
+                        <div className="shop-product-body">
+                          <h3>{product.Nombre}</h3>
+                          <p>{product.Descripcion || 'Descubre más detalles de este producto.'}</p>
+                          <div className="shop-product-meta">
+                            <strong>₡{Number(product.Precio || 0).toLocaleString('es-CR')}</strong>
+                            <span>{stock > 0 ? `${stock} disponibles` : 'Sin existencias'}</span>
+                          </div>
+                          <div className="shop-product-actions">
+                            <button
+                              aria-label={`Ver detalles de ${product.Nombre}`}
+                              className="admin-action-button admin-action-secondary"
+                              disabled={busy}
+                              onClick={() => openProductDetail(product.ProductoID)}
+                              type="button"
+                            >
+                              Ver detalles
+                            </button>
+                            <button
+                              aria-label={`Agregar ${product.Nombre} al carrito`}
+                              className="dialog-primary"
+                              disabled={busy || stock < 1}
+                              onClick={() => handleAddToCart(product.ProductoID)}
+                              type="button"
+                            >
+                              Agregar
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
           </section>
         ) : (
-          <section className="app-dialog" aria-labelledby="auth-title">
+          <section className={user ? 'app-dialog account-dialog' : 'app-dialog'} aria-labelledby="auth-title">
           <div className="dialog-heading">
             <div>
               <span className="eyebrow">CLICKMARKET</span>
@@ -1785,32 +1951,56 @@ function App() {
 
           {user ? (
             <div className="account-summary">
-              <div className="account-avatar" aria-hidden="true">{user.nombre?.charAt(0)?.toUpperCase() || 'U'}</div>
-              <strong>{user.nombre} {user.apellido}</strong>
-              <span>{user.correo}</span>
-              <span>{user.rol}</span>
+              <div className="account-profile-heading">
+                <div className="account-avatar" aria-hidden="true">{user.nombre?.charAt(0)?.toUpperCase() || 'U'}</div>
+                <div className="account-identity">
+                  <strong>{user.nombre} {user.apellido}</strong>
+                  <span>{user.correo}</span>
+                  <span className="account-role">{user.rol}</span>
+                </div>
+              </div>
               <form className="auth-form" onSubmit={handleUpdateProfile}>
+                <h3>Información personal</h3>
                 <label>Nombre<input value={profileEdit.nombre} onChange={(event) => setProfileEdit({ ...profileEdit, nombre: event.target.value })} required /></label>
                 <label>Apellido<input value={profileEdit.apellido} onChange={(event) => setProfileEdit({ ...profileEdit, apellido: event.target.value })} required /></label>
                 <label>Correo<input type="email" value={profileEdit.correo} onChange={(event) => setProfileEdit({ ...profileEdit, correo: event.target.value })} required /></label>
                 <button className="dialog-primary" disabled={busy} type="submit">Guardar perfil</button>
               </form>
-              <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setAddingAddress((current) => !current)}>
-                {addingAddress ? 'Cancelar' : 'Agregar dirección'}
-              </button>
-              {addingAddress && (
-                <form className="auth-form" onSubmit={handleCreateAddress}>
-                  <label>Provincia<input value={newAddress.provincia} onChange={(event) => setNewAddress({ ...newAddress, provincia: event.target.value })} required /></label>
-                  <label>Cantón<input value={newAddress.canton} onChange={(event) => setNewAddress({ ...newAddress, canton: event.target.value })} required /></label>
-                  <label>Distrito<input value={newAddress.distrito} onChange={(event) => setNewAddress({ ...newAddress, distrito: event.target.value })} required /></label>
-                  <label>Señas<input value={newAddress.detalle} onChange={(event) => setNewAddress({ ...newAddress, detalle: event.target.value })} required /></label>
-                  <button className="dialog-primary" disabled={busy} type="submit">{busy ? 'Guardando...' : 'Guardar dirección'}</button>
-                </form>
-              )}
-              {addresses.length > 0 && (
-                <div className="catalog-grid">
-                  {addresses.map((address) => (
-                    <article className="catalog-card" key={address.DireccionID}>
+              <section className="account-addresses" aria-labelledby="account-addresses-title">
+                <div className="account-address-heading">
+                  <div>
+                    <h3 id="account-addresses-title">Mis direcciones</h3>
+                    <p>Administra dónde quieres recibir tus compras.</p>
+                  </div>
+                  <button
+                    aria-controls="add-address-form"
+                    aria-expanded={addingAddress}
+                    className="admin-action-button admin-action-secondary"
+                    type="button"
+                    onClick={() => setAddingAddress((current) => !current)}
+                  >
+                    {addingAddress ? 'Cancelar' : 'Agregar dirección'}
+                  </button>
+                </div>
+                {addingAddress && (
+                  <form
+                    aria-label="Agregar dirección"
+                    className="auth-form account-address-form"
+                    id="add-address-form"
+                    onSubmit={handleCreateAddress}
+                  >
+                    <h3>Nueva dirección</h3>
+                    <label>Provincia<input value={newAddress.provincia} onChange={(event) => setNewAddress({ ...newAddress, provincia: event.target.value })} required /></label>
+                    <label>Cantón<input value={newAddress.canton} onChange={(event) => setNewAddress({ ...newAddress, canton: event.target.value })} required /></label>
+                    <label>Distrito<input value={newAddress.distrito} onChange={(event) => setNewAddress({ ...newAddress, distrito: event.target.value })} required /></label>
+                    <label>Señas<input value={newAddress.detalle} onChange={(event) => setNewAddress({ ...newAddress, detalle: event.target.value })} required /></label>
+                    <button className="dialog-primary" disabled={busy} type="submit">{busy ? 'Guardando...' : 'Guardar dirección'}</button>
+                  </form>
+                )}
+                {addresses.length > 0 ? (
+                  <div className="catalog-grid">
+                    {addresses.map((address) => (
+                      <article className="catalog-card account-address-card" key={address.DireccionID}>
                       {editingAddress?.DireccionID === address.DireccionID ? (
                         <form onSubmit={handleUpdateAddress}>
                           <label>Provincia<input value={editingAddress.Provincia} onChange={(event) => setEditingAddress({ ...editingAddress, Provincia: event.target.value })} required /></label>
@@ -1833,9 +2023,12 @@ function App() {
                       )}
                     </article>
                   ))}
-                </div>
-              )}
-              <button className="dialog-primary" type="button" onClick={handleLogout} disabled={busy}>
+                  </div>
+                ) : !addingAddress && (
+                  <p className="account-empty-addresses">Aún no tienes direcciones guardadas.</p>
+                )}
+              </section>
+              <button className="dialog-primary account-logout" type="button" onClick={handleLogout} disabled={busy}>
                 {busy ? 'Cerrando...' : 'Cerrar sesión'}
               </button>
             </div>

@@ -1,7 +1,7 @@
 :root {
   font-family: Inter, "Segoe UI", Arial, sans-serif;
   color: #1b2a3d;
-  background: #fff;
+  background: #f5f7fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -23,7 +23,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #fff;
+  background: #f5f7fb;
 }
 
 img,
