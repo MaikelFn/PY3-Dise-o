@@ -5,7 +5,13 @@ const { publicarEvento } = require('../events/pedido.events');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarPago } = require('../adapters/pago.adapter');
 
-// Registrar pago
+/**
+ * Registra un pago para un pedido del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pago registrado adaptado
+ */
 async function registrarPago(req, res) {
   try {
     const { pedidoID, metodoPagoID } = req.body;
@@ -17,11 +23,11 @@ async function registrarPago(req, res) {
       [pedidoID, metodoPagoID, req.session.usuario.id]
     );
 
-    const p = resultado.rows[0];
+    const pago = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Pago registrado correctamente',
-      pago: adaptarPago(p)
+      pago: adaptarPago(pago)
     });
 
   } catch (error) {
@@ -29,7 +35,14 @@ async function registrarPago(req, res) {
   }
 }
 
-// Consultar pago
+/**
+ * Consulta un pago por su identificador.
+ * Solo usuarios con acceso al pedido asociado pueden consultarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pago adaptado
+ */
 async function consultarPago(req, res) {
   try {
     const pagoID = Number(req.params.id);
@@ -41,24 +54,30 @@ async function consultarPago(req, res) {
       [pagoID]
     );
 
-    const p = resultado.rows[0];
+    const pago = resultado.rows[0];
 
-    if (!p || !await usuarioPuedeVerPedido(
-      conexion, p.pedidoid, req.session.usuario
+    if (!pago || !await usuarioPuedeVerPedido(
+      conexion, pago.pedidoid, req.session.usuario
     )) {
       return res.status(404).json({
         mensaje: 'Pago no encontrado'
       });
     }
 
-    return res.json(adaptarPago(p));
+    return res.json(adaptarPago(pago));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar pago');
   }
 }
 
-// Listar pagos por pedido
+/**
+ * Lista los pagos asociados a un pedido.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de pagos adaptados
+ */
 async function listarPagosPorPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
@@ -76,7 +95,15 @@ async function listarPagosPorPedido(req, res) {
   }
 }
 
-// Aprobar pago (operación administrativa de prueba)
+/**
+ * Aprueba un pago y confirma el pedido asociado.
+ * Operación administrativa de prueba que publica el evento
+ * de pago aprobado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pago aprobado adaptado
+ */
 async function aprobarPago(req, res) {
   try {
     const pagoID = Number(req.params.id);
@@ -93,12 +120,12 @@ async function aprobarPago(req, res) {
       [pagoID]
     );
 
-    const p = resultado.rows[0];
+    const pago = resultado.rows[0];
 
-    if (p) {
+    if (pago) {
       const pedidoResultado = await conexion.query(
         'SELECT * FROM public.sp_pedidos_consultarporid($1)',
-        [p.pedidoid]
+        [pago.pedidoid]
       );
 
       const pedido = pedidoResultado.rows[0];
@@ -106,14 +133,14 @@ async function aprobarPago(req, res) {
       if (pedido) {
         await publicarEvento('pago.aprobado', {
           usuarioID: pedido.usuarioid,
-          pedidoID: p.pedidoid
+          pedidoID: pago.pedidoid
         });
       }
     }
 
     return res.json({
       mensaje: 'Pago aprobado y pedido confirmado',
-      pago: p ? adaptarPago(p) : null
+      pago: pago ? adaptarPago(pago) : null
     });
 
   } catch (error) {
@@ -121,7 +148,14 @@ async function aprobarPago(req, res) {
   }
 }
 
-// Rechazar pago
+/**
+ * Rechaza un pago y actualiza el estado del pedido asociado.
+ * Publica el evento de pago rechazado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pago rechazado adaptado
+ */
 async function rechazarPago(req, res) {
   try {
     const pagoID = Number(req.params.id);
@@ -133,12 +167,12 @@ async function rechazarPago(req, res) {
       [pagoID]
     );
 
-    const p = resultado.rows[0];
+    const pago = resultado.rows[0];
 
-    if (p) {
+    if (pago) {
       const pedidoResultado = await conexion.query(
         'SELECT * FROM public.sp_pedidos_consultarporid($1)',
-        [p.pedidoid]
+        [pago.pedidoid]
       );
 
       const pedido = pedidoResultado.rows[0];
@@ -146,14 +180,14 @@ async function rechazarPago(req, res) {
       if (pedido) {
         await publicarEvento('pago.rechazado', {
           usuarioID: pedido.usuarioid,
-          pedidoID: p.pedidoid
+          pedidoID: pago.pedidoid
         });
       }
     }
 
     return res.json({
       mensaje: 'Pago rechazado correctamente',
-      pago: p ? adaptarPago(p) : null
+      pago: pago ? adaptarPago(pago) : null
     });
 
   } catch (error) {

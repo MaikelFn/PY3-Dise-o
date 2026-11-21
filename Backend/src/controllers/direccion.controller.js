@@ -3,7 +3,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarDireccion } = require('../adapters/direccion.adapter');
 
-// Listar direcciones
+/**
+ * Lista las direcciones del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de direcciones adaptadas
+ */
 async function listarDirecciones(req, res) {
   try {
     const conexion = await getPool();
@@ -20,7 +26,13 @@ async function listarDirecciones(req, res) {
   }
 }
 
-// Agregar dirección
+/**
+ * Agrega una nueva dirección al usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la dirección creada adaptada
+ */
 async function agregarDireccion(req, res) {
   try {
     const { provincia, canton, distrito, detalle, principal = false } = req.body;
@@ -38,11 +50,11 @@ async function agregarDireccion(req, res) {
       ]
     );
 
-    const d = resultado.rows[0];
+    const direccion = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Dirección agregada correctamente',
-      direccion: adaptarDireccion(d)
+      direccion: adaptarDireccion(direccion)
     });
 
   } catch (error) {
@@ -50,7 +62,13 @@ async function agregarDireccion(req, res) {
   }
 }
 
-// Actualizar dirección
+/**
+ * Actualiza una dirección existente del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la dirección actualizada adaptada
+ */
 async function actualizarDireccion(req, res) {
   try {
     const id = Number(req.params.id);
@@ -71,11 +89,11 @@ async function actualizarDireccion(req, res) {
       ]
     );
 
-    const d = resultado.rows[0];
+    const direccion = resultado.rows[0];
 
     return res.json({
       mensaje: 'Dirección actualizada correctamente',
-      direccion: adaptarDireccion(d)
+      direccion: adaptarDireccion(direccion)
     });
 
   } catch (error) {
@@ -83,7 +101,13 @@ async function actualizarDireccion(req, res) {
   }
 }
 
-// Eliminar dirección
+/**
+ * Elimina una dirección del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la confirmación de eliminación
+ */
 async function eliminarDireccion(req, res) {
   try {
     const id = Number(req.params.id);

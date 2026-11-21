@@ -2,7 +2,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarRol } = require('../adapters/rol.adapter');
 
-// Listar roles
+/**
+ * Lista los roles de usuario disponibles en ClickMarket.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de roles adaptados
+ */
 async function listarRoles(req, res) {
   try {
     const conexion = await getPool();

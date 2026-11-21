@@ -2,7 +2,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarCarrito } = require('../adapters/carrito.adapter');
 
-// Obtener o crear carrito
+/**
+ * Obtiene el carrito del usuario autenticado o lo crea si no existe.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el carrito adaptado
+ */
 async function obtenerOCrearCarrito(req, res) {
   try {
     const conexion = await getPool();
@@ -12,16 +18,22 @@ async function obtenerOCrearCarrito(req, res) {
       [req.session.usuario.id]
     );
 
-    const c = resultado.rows[0];
+    const carrito = resultado.rows[0];
 
-    return res.json(adaptarCarrito(c));
+    return res.json(adaptarCarrito(carrito));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al obtener carrito');
   }
 }
 
-// Consultar carrito
+/**
+ * Consulta el carrito del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de carritos adaptados
+ */
 async function consultarCarrito(req, res) {
   try {
     const conexion = await getPool();
@@ -40,7 +52,13 @@ async function consultarCarrito(req, res) {
   }
 }
 
-// Vaciar carrito
+/**
+ * Vacía el carrito del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la confirmación de vaciado
+ */
 async function vaciarCarrito(req, res) {
   try {
     const conexion = await getPool();

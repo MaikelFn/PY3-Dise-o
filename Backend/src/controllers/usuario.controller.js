@@ -2,6 +2,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarUsuario } = require('../adapters/usuario.adapter');
 
+/**
+ * Lista todos los usuarios registrados en ClickMarket.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de usuarios adaptados
+ */
 async function listarUsuarios(req, res) {
   try {
     const conexion = await getPool();
@@ -17,6 +24,14 @@ async function listarUsuarios(req, res) {
   }
 }
 
+/**
+ * Consulta un usuario por su identificador.
+ * Solo administradores o el propio usuario pueden consultarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el usuario adaptado
+ */
 async function consultarUsuario(req, res) {
   try {
     const usuarioID = Number(req.params.id);
@@ -53,6 +68,14 @@ async function consultarUsuario(req, res) {
   }
 }
 
+/**
+ * Actualiza los datos básicos de un usuario.
+ * No permite modificar el rol mediante este endpoint.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el usuario actualizado
+ */
 async function actualizarUsuario(req, res) {
   try {
     const usuarioID = Number(req.params.id);
@@ -103,6 +126,14 @@ async function actualizarUsuario(req, res) {
   }
 }
 
+/**
+ * Desactiva la cuenta de un usuario.
+ * Un administrador no puede desactivar su propia cuenta.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el usuario desactivado
+ */
 async function desactivarUsuario(req, res) {
   try {
     const usuarioID = Number(req.params.id);
@@ -139,6 +170,13 @@ async function desactivarUsuario(req, res) {
   }
 }
 
+/**
+ * Asigna un rol a un usuario.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el usuario y su nuevo rol
+ */
 async function asignarRol(req, res) {
   try {
     const usuarioID = Number(req.params.id);

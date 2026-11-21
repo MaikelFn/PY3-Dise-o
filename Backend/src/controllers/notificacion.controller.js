@@ -1,7 +1,13 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
-// Listar notificaciones
+/**
+ * Lista las notificaciones del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de notificaciones
+ */
 async function listarNotificaciones(req, res) {
   try {
     const { soloNoLeidas } = req.query;
@@ -20,7 +26,13 @@ async function listarNotificaciones(req, res) {
   }
 }
 
-// Consultar notificación
+/**
+ * Consulta una notificación por su identificador.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la notificación encontrada
+ */
 async function consultarNotificacion(req, res) {
   try {
     const id = Number(req.params.id);
@@ -45,7 +57,13 @@ async function consultarNotificacion(req, res) {
   }
 }
 
-// Marcar notificación como leída
+/**
+ * Marca una notificación como leída.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la confirmación de lectura
+ */
 async function marcarLeida(req, res) {
   try {
     const id = Number(req.params.id);
@@ -67,7 +85,13 @@ async function marcarLeida(req, res) {
   }
 }
 
-// Marcar todas las notificaciones como leídas
+/**
+ * Marca todas las notificaciones del usuario como leídas.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la cantidad de notificaciones actualizadas
+ */
 async function marcarTodasLeidas(req, res) {
   try {
     const conexion = await getPool();

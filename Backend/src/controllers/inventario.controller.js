@@ -2,7 +2,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarInventario } = require('../adapters/inventario.adapter');
 
-// Consultar inventario
+/**
+ * Consulta el inventario de un producto.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el inventario adaptado
+ */
 async function consultarInventario(req, res) {
   try {
     const productoID = Number(req.params.id);
@@ -20,16 +26,23 @@ async function consultarInventario(req, res) {
       });
     }
 
-    const i = resultado.rows[0];
+    const inventario = resultado.rows[0];
 
-    return res.json(adaptarInventario(i));
+    return res.json(adaptarInventario(inventario));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar inventario');
   }
 }
 
-// Agregar existencias
+/**
+ * Agrega existencias al inventario de un producto.
+ * Requiere un perfil de vendedor activo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el inventario actualizado adaptado
+ */
 async function agregarExistencias(req, res) {
   try {
     const productoID = Number(req.params.id);
@@ -57,11 +70,11 @@ async function agregarExistencias(req, res) {
       ]
     );
 
-    const i = resultado.rows[0];
+    const inventario = resultado.rows[0];
 
     return res.json({
       mensaje: 'Existencias agregadas correctamente',
-      inventario: adaptarInventario(i)
+      inventario: adaptarInventario(inventario)
     });
 
   } catch (error) {

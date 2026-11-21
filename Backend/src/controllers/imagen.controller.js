@@ -5,6 +5,13 @@ const fs = require('fs/promises');
 const path = require('path');
 const { adaptarImagen } = require('../adapters/imagen.adapter');
 
+/**
+ * Detecta el tipo de imagen a partir de las firmas binarias
+ * de los formatos JPG, PNG y WebP.
+ *
+ * @param {Buffer} buffer Contenido binario del archivo recibido
+ * @returns {object|null} Objeto con mimeType y extension, o null si no coincide
+ */
 function detectImageType(buffer) {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return { mimeType: 'image/jpeg', extension: '.jpg' };
@@ -18,7 +25,13 @@ function detectImageType(buffer) {
   return null;
 }
 
-// Listar imágenes
+/**
+ * Lista las imágenes asociadas a un producto.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de imágenes adaptadas
+ */
 async function listarImagenes(req, res) {
   try {
     const productoID = Number(req.params.id);
@@ -39,7 +52,14 @@ async function listarImagenes(req, res) {
   }
 }
 
-// Agregar imagen
+/**
+ * Agrega una imagen a un producto del vendedor autenticado.
+ * Valida el formato del archivo y lo almacena en el servidor.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express con el archivo de imagen
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la imagen agregada adaptada
+ */
 async function agregarImagen(req, res) {
   try {
     const productoID = Number(req.params.id);
@@ -86,13 +106,13 @@ async function agregarImagen(req, res) {
       ]
     );
 
-    const i = resultado.rows[0];
+    const imagen = resultado.rows[0];
     await fs.mkdir(imageDirectory, { recursive: true });
     await fs.writeFile(imagePath, req.file.buffer);
 
     return res.status(201).json({
       mensaje: 'Imagen agregada correctamente',
-      imagen: adaptarImagen(i)
+      imagen: adaptarImagen(imagen)
     });
 
   } catch (error) {
@@ -100,7 +120,13 @@ async function agregarImagen(req, res) {
   }
 }
 
-// Establecer imagen principal
+/**
+ * Establece una imagen como la principal de su producto.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de imágenes actualizado
+ */
 async function establecerPrincipal(req, res) {
   try {
     const imagenID = Number(req.params.id);
@@ -135,7 +161,13 @@ async function establecerPrincipal(req, res) {
   }
 }
 
-// Eliminar imagen
+/**
+ * Elimina una imagen de producto del vendedor autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la confirmación de eliminación
+ */
 async function eliminarImagen(req, res) {
   try {
     const imagenID = Number(req.params.id);

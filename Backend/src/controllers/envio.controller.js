@@ -5,7 +5,14 @@ const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
 const { adaptarEnvio } = require('../adapters/envio.adapter');
 
-// Consultar envío
+/**
+ * Consulta un envío por su identificador.
+ * Solo usuarios con acceso al pedido asociado pueden consultarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el envío adaptado
+ */
 async function consultarEnvio(req, res) {
   try {
     const envioID = Number(req.params.id);
@@ -34,7 +41,14 @@ async function consultarEnvio(req, res) {
   }
 }
 
-// Consultar envío por pedido
+/**
+ * Consulta el envío asociado a un pedido.
+ * Solo usuarios con acceso al pedido pueden consultarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el envío adaptado o null
+ */
 async function consultarEnvioPorPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
@@ -67,7 +81,14 @@ async function consultarEnvioPorPedido(req, res) {
   }
 }
 
-// Actualizar estado del envío
+/**
+ * Actualiza el estado de un envío.
+ * Publica los eventos de envío despachado o entregado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el envío actualizado adaptado
+ */
 async function actualizarEstadoEnvio(req, res) {
   try {
     const envioID = Number(req.params.id);

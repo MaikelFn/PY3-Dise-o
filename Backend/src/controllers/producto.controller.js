@@ -5,7 +5,14 @@ const path = require('path');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarProducto, adaptarProductoResumen } = require('../adapters/producto.adapter');
 
-// Listar productos
+/**
+ * Lista los productos activos de ClickMarket.
+ * Soporta filtros por categoría, vendedor y texto de búsqueda.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de productos adaptados
+ */
 async function listarProductos(req, res) {
   try {
     const { categoriaID, vendedorID, busqueda } = req.query;
@@ -29,7 +36,14 @@ async function listarProductos(req, res) {
   }
 }
 
-// Consultar producto por ID
+/**
+ * Consulta un producto por su identificador.
+ * Solo devuelve productos activos.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el producto adaptado
+ */
 async function consultarProducto(req, res) {
   try {
     const conexion = await getPool();
@@ -39,22 +53,29 @@ async function consultarProducto(req, res) {
       [req.params.id]
     );
 
-    const p = resultado.rows[0];
+    const producto = resultado.rows[0];
 
-    if (!p || !p.activo) {
+    if (!producto || !producto.activo) {
       return res.status(404).json({
         mensaje: 'Producto no encontrado'
       });
     }
 
-    return res.json(adaptarProducto(p));
+    return res.json(adaptarProducto(producto));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar producto');
   }
 }
 
-// Crear producto
+/**
+ * Crea un producto para el vendedor autenticado.
+ * Requiere un perfil de vendedor activo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el producto creado adaptado
+ */
 async function crearProducto(req, res) {
   try {
     const { categoriaID, nombre, descripcion, precio } = req.body;
@@ -83,11 +104,11 @@ async function crearProducto(req, res) {
       ]
     );
 
-    const p = resultado.rows[0];
+    const producto = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Producto creado correctamente',
-      producto: adaptarProductoResumen(p)
+      producto: adaptarProductoResumen(producto)
     });
 
   } catch (error) {
@@ -95,6 +116,13 @@ async function crearProducto(req, res) {
   }
 }
 
+/**
+ * Detecta el tipo de imagen a partir de las firmas binarias
+ * de los formatos JPG, PNG y WebP.
+ *
+ * @param {Buffer} buffer Contenido binario del archivo recibido
+ * @returns {object|null} Objeto con mimeType y extension, o null si no coincide
+ */
 function detectImageType(buffer) {
   if (
     buffer.length >= 3 &&
@@ -125,6 +153,14 @@ function detectImageType(buffer) {
   return null;
 }
 
+/**
+ * Publica un producto completo con su imagen principal y existencias.
+ * Ejecuta la operación dentro de una transacción de PostgreSQL.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express con el archivo de imagen
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el producto publicado adaptado
+ */
 async function publicarProducto(req, res) {
   const categoriaID = Number(req.body.categoriaID);
   const precio = Number(req.body.precio);
@@ -259,7 +295,13 @@ async function publicarProducto(req, res) {
   }
 }
 
-// Actualizar producto
+/**
+ * Actualiza los datos de un producto del vendedor autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el producto actualizado adaptado
+ */
 async function actualizarProducto(req, res) {
   try {
     const productoID = Number(req.params.id);
@@ -290,11 +332,11 @@ async function actualizarProducto(req, res) {
       ]
     );
 
-    const p = resultado.rows[0];
+    const producto = resultado.rows[0];
 
     return res.json({
       mensaje: 'Producto actualizado correctamente',
-      producto: adaptarProductoResumen(p)
+      producto: adaptarProductoResumen(producto)
     });
 
   } catch (error) {
@@ -302,7 +344,13 @@ async function actualizarProducto(req, res) {
   }
 }
 
-// Desactivar producto
+/**
+ * Desactiva un producto del vendedor autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el producto desactivado adaptado
+ */
 async function desactivarProducto(req, res) {
   try {
     const productoID = Number(req.params.id);
@@ -325,11 +373,11 @@ async function desactivarProducto(req, res) {
       [productoID, vendedor.rows[0].vendedorid]
     );
 
-    const p = resultado.rows[0];
+    const producto = resultado.rows[0];
 
     return res.json({
       mensaje: 'Producto desactivado correctamente',
-      producto: adaptarProductoResumen(p)
+      producto: adaptarProductoResumen(producto)
     });
 
   } catch (error) {

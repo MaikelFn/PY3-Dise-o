@@ -11,7 +11,16 @@ const {
   adaptarPedidoResumen
 } = require('../adapters/pedido.adapter');
 
-// Verificar acceso al pedido
+/**
+ * Verifica si un usuario puede ver un pedido determinado.
+ * Comprueba la propiedad del pedido y, en su defecto,
+ * si el usuario es vendedor de algún producto incluido.
+ *
+ * @param {object} conexion Cliente de conexión de PostgreSQL
+ * @param {number} pedidoID Identificador del pedido
+ * @param {object} usuario Usuario de la sesión con id y rol
+ * @returns {Promise<boolean>} true si el usuario tiene acceso al pedido
+ */
 async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
   const resultado = await conexion.query(
     'SELECT * FROM public.sp_pedidos_validaracceso($1, $2)',
@@ -23,17 +32,25 @@ async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
   const vendedorResultado = await conexion.query(`
     SELECT 1
     FROM public.detallepedido dp
-    JOIN public.producto p ON p.productoid = dp.productoid
-    JOIN public.vendedor v ON v.vendedorid = p.vendedorid
+    JOIN public.producto prod ON prod.productoid = dp.productoid
+    JOIN public.vendedor vend ON vend.vendedorid = prod.vendedorid
     WHERE dp.pedidoid = $1
-      AND v.usuarioid = $2
+      AND vend.usuarioid = $2
     LIMIT 1
   `, [pedidoID, usuario.id]);
 
   return vendedorResultado.rows.length > 0;
 }
 
-// Middleware de acceso
+/**
+ * Middleware que valida el acceso del usuario al pedido indicado
+ * en los parámetros de la ruta antes de continuar.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @param {function} next Siguiente middleware de Express
+ * @returns {Promise<void>} Continúa la cadena o responde con error 404
+ */
 async function verificarAccesoPedido(req, res, next) {
   try {
     const pedidoID = Number(req.params.id);
@@ -55,7 +72,14 @@ async function verificarAccesoPedido(req, res, next) {
   }
 }
 
-// Crear pedido
+/**
+ * Crea un pedido a partir del carrito del usuario autenticado
+ * y reserva el inventario correspondiente.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el identificador del pedido creado
+ */
 async function crearPedido(req, res) {
   try {
     const { direccionID, tipoEnvioID } = req.body;
@@ -84,6 +108,15 @@ async function crearPedido(req, res) {
   }
 }
 
+/**
+ * Confirma un pedido mediante un pago simulado por transferencia.
+ * Solo disponible fuera de producción. Ejecuta pedido y pago
+ * dentro de una transacción de PostgreSQL.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pedido y pago confirmados
+ */
 async function crearPedidoConPagoSimulado(req, res) {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({
@@ -191,7 +224,14 @@ async function crearPedidoConPagoSimulado(req, res) {
   }
 }
 
-// Consultar pedido
+/**
+ * Consulta un pedido por su identificador.
+ * Solo usuarios con acceso al pedido pueden consultarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pedido adaptado
+ */
 async function consultarPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
@@ -211,22 +251,28 @@ async function consultarPedido(req, res) {
       [pedidoID]
     );
 
-    const p = resultado.rows[0];
+    const pedido = resultado.rows[0];
 
-    if (!p) {
+    if (!pedido) {
       return res.status(404).json({
         mensaje: 'Pedido no encontrado'
       });
     }
 
-    return res.json(adaptarPedido(p));
+    return res.json(adaptarPedido(pedido));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar pedido');
   }
 }
 
-// Listar pedidos
+/**
+ * Lista los pedidos del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de pedidos adaptados
+ */
 async function listarPedidos(req, res) {
   try {
     const conexion = await getPool();
@@ -243,6 +289,13 @@ async function listarPedidos(req, res) {
   }
 }
 
+/**
+ * Lista todos los pedidos para la vista de administración.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de pedidos administrativos
+ */
 async function listarPedidosAdministrador(_req, res) {
   try {
     const conexion = await getPool();
@@ -256,6 +309,13 @@ async function listarPedidosAdministrador(_req, res) {
   }
 }
 
+/**
+ * Lista las ventas de la tienda del vendedor autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de ventas del vendedor
+ */
 async function listarPedidosVendedor(req, res) {
   try {
     const conexion = await getPool();
@@ -270,7 +330,13 @@ async function listarPedidosVendedor(req, res) {
   }
 }
 
-// Confirmar pedido
+/**
+ * Confirma un pedido y actualiza su estado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pedido confirmado adaptado
+ */
 async function confirmarPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
@@ -282,11 +348,11 @@ async function confirmarPedido(req, res) {
       [pedidoID]
     );
 
-    const p = resultado.rows[0];
+    const pedido = resultado.rows[0];
 
     return res.json({
       mensaje: 'Pedido confirmado correctamente',
-      pedido: adaptarPedidoResumen(p)
+      pedido: adaptarPedidoResumen(pedido)
     });
 
   } catch (error) {
@@ -294,7 +360,14 @@ async function confirmarPedido(req, res) {
   }
 }
 
-// Cancelar pedido
+/**
+ * Cancela un pedido y libera el inventario reservado.
+ * Solo usuarios con acceso al pedido pueden cancelarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el pedido cancelado adaptado
+ */
 async function cancelarPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);
@@ -314,16 +387,16 @@ async function cancelarPedido(req, res) {
       [pedidoID]
     );
 
-    const p = resultado.rows[0];
+    const pedido = resultado.rows[0];
 
     await publicarEvento('pedido.cancelado', {
-      usuarioID: p.usuarioid,
+      usuarioID: pedido.usuarioid,
       pedidoID
     });
 
     return res.json({
       mensaje: 'Pedido cancelado e inventario liberado',
-      pedido: adaptarPedidoResumen(p)
+      pedido: adaptarPedidoResumen(pedido)
     });
 
   } catch (error) {

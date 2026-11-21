@@ -4,6 +4,14 @@ const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { adaptarDetallePedido } = require('../adapters/detallePedido.adapter');
 
+/**
+ * Lista los detalles (productos y cantidades) de un pedido.
+ * Solo usuarios con acceso al pedido pueden consultarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de detalles adaptados
+ */
 async function listarDetallesPedido(req, res) {
   try {
     const pedidoID = Number(req.params.id);

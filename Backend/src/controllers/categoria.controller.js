@@ -2,7 +2,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarCategoria } = require('../adapters/categoria.adapter');
 
-// Listar categorías
+/**
+ * Lista todas las categorías de productos de ClickMarket.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de categorías adaptadas
+ */
 async function listarCategorias(req, res) {
   try {
     const conexion = await getPool();
@@ -20,7 +26,13 @@ async function listarCategorias(req, res) {
   }
 }
 
-// Consultar categoría
+/**
+ * Consulta una categoría por su identificador.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la categoría adaptada
+ */
 async function consultarCategoria(req, res) {
   try {
     const categoriaID = Number(req.params.id);
@@ -38,16 +50,22 @@ async function consultarCategoria(req, res) {
       });
     }
 
-    const c = resultado.rows[0];
+    const categoria = resultado.rows[0];
 
-    return res.json(adaptarCategoria(c));
+    return res.json(adaptarCategoria(categoria));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar categoría');
   }
 }
 
-// Crear categoría
+/**
+ * Crea una nueva categoría de productos.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la categoría creada adaptada
+ */
 async function crearCategoria(req, res) {
   try {
     const { nombre, descripcion } = req.body;
@@ -59,11 +77,11 @@ async function crearCategoria(req, res) {
       [nombre.trim(), descripcion ?? null]
     );
 
-    const c = resultado.rows[0];
+    const categoria = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Categoría creada correctamente',
-      categoria: adaptarCategoria(c)
+      categoria: adaptarCategoria(categoria)
     });
 
   } catch (error) {
@@ -71,7 +89,13 @@ async function crearCategoria(req, res) {
   }
 }
 
-// Actualizar categoría
+/**
+ * Actualiza una categoría existente.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la categoría actualizada adaptada
+ */
 async function actualizarCategoria(req, res) {
   try {
     const categoriaID = Number(req.params.id);
@@ -84,11 +108,11 @@ async function actualizarCategoria(req, res) {
       [categoriaID, nombre.trim(), descripcion ?? null]
     );
 
-    const c = resultado.rows[0];
+    const categoria = resultado.rows[0];
 
     return res.json({
       mensaje: 'Categoría actualizada correctamente',
-      categoria: adaptarCategoria(c)
+      categoria: adaptarCategoria(categoria)
     });
 
   } catch (error) {

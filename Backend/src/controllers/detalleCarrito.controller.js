@@ -1,7 +1,13 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 
-// Listar detalles del carrito
+/**
+ * Lista los detalles del carrito del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de detalles del carrito
+ */
 async function listarDetalles(req, res) {
   try {
     const conexion = await getPool();
@@ -18,7 +24,13 @@ async function listarDetalles(req, res) {
   }
 }
 
-// Agregar producto al carrito
+/**
+ * Agrega un producto al carrito del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con los detalles actualizados del carrito
+ */
 async function agregarDetalle(req, res) {
   try {
     const { productoID, cantidad } = req.body;
@@ -40,7 +52,14 @@ async function agregarDetalle(req, res) {
   }
 }
 
-// Actualizar cantidad
+/**
+ * Actualiza la cantidad de un producto en el carrito
+ * del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con los detalles actualizados del carrito
+ */
 async function actualizarCantidad(req, res) {
   try {
     const productoID = Number(req.params.productoID);
@@ -63,7 +82,13 @@ async function actualizarCantidad(req, res) {
   }
 }
 
-// Eliminar producto del carrito
+/**
+ * Elimina un producto del carrito del usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con los detalles actualizados del carrito
+ */
 async function eliminarDetalle(req, res) {
   try {
     const productoID = Number(req.params.productoID);

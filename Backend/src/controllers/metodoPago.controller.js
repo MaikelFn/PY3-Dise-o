@@ -3,6 +3,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarMetodoPago } = require('../adapters/metodoPago.adapter');
 
+/**
+ * Lista los métodos de pago disponibles en ClickMarket.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de métodos de pago adaptados
+ */
 async function listarMetodosPago(req, res) {
   try {
     const conexion = await getPool();

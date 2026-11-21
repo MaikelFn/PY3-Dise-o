@@ -2,7 +2,13 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarVendedor } = require('../adapters/vendedor.adapter');
 
-// Listar vendedores
+/**
+ * Lista los vendedores activos de ClickMarket.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el arreglo de vendedores adaptados
+ */
 async function listarVendedores(req, res) {
   try {
     const conexion = await getPool();
@@ -21,7 +27,14 @@ async function listarVendedores(req, res) {
   }
 }
 
-// Consultar vendedor
+/**
+ * Consulta un vendedor por su identificador.
+ * Solo devuelve vendedores activos.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el vendedor adaptado
+ */
 async function consultarVendedor(req, res) {
   try {
     const id = Number(req.params.id);
@@ -39,16 +52,22 @@ async function consultarVendedor(req, res) {
       });
     }
 
-    const v = resultado.rows[0];
+    const vendedor = resultado.rows[0];
 
-    return res.json(adaptarVendedor(v));
+    return res.json(adaptarVendedor(vendedor));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar vendedor');
   }
 }
 
-// Registrar vendedor
+/**
+ * Registra un perfil de vendedor para el usuario autenticado.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el vendedor registrado adaptado
+ */
 async function registrarVendedor(req, res) {
   try {
     const { nombreComercial, descripcion } = req.body;
@@ -64,11 +83,11 @@ async function registrarVendedor(req, res) {
       ]
     );
 
-    const v = resultado.rows[0];
+    const vendedor = resultado.rows[0];
 
     return res.status(201).json({
       mensaje: 'Vendedor registrado correctamente',
-      vendedor: adaptarVendedor(v)
+      vendedor: adaptarVendedor(vendedor)
     });
 
   } catch (error) {
@@ -76,7 +95,14 @@ async function registrarVendedor(req, res) {
   }
 }
 
-// Actualizar vendedor
+/**
+ * Actualiza los datos comerciales de un vendedor.
+ * Solo el propietario del vendedor puede modificarlo.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el vendedor actualizado adaptado
+ */
 async function actualizarVendedor(req, res) {
   try {
     const id = Number(req.params.id);
@@ -100,11 +126,11 @@ async function actualizarVendedor(req, res) {
       [id, nombreComercial.trim(), descripcion ?? null]
     );
 
-    const v = resultado.rows[0];
+    const vendedor = resultado.rows[0];
 
     return res.json({
       mensaje: 'Vendedor actualizado correctamente',
-      vendedor: adaptarVendedor(v)
+      vendedor: adaptarVendedor(vendedor)
     });
 
   } catch (error) {
@@ -112,7 +138,13 @@ async function actualizarVendedor(req, res) {
   }
 }
 
-// Desactivar vendedor
+/**
+ * Desactiva el perfil de un vendedor.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el vendedor desactivado adaptado
+ */
 async function desactivarVendedor(req, res) {
   try {
     const id = Number(req.params.id);
@@ -124,11 +156,11 @@ async function desactivarVendedor(req, res) {
       [id]
     );
 
-    const v = resultado.rows[0];
+    const vendedor = resultado.rows[0];
 
     return res.json({
       mensaje: 'Vendedor desactivado correctamente',
-      vendedor: adaptarVendedor(v)
+      vendedor: adaptarVendedor(vendedor)
     });
 
   } catch (error) {

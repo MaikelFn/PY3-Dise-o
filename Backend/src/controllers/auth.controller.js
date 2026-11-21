@@ -4,6 +4,13 @@ const { promisify } = require('util');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { adaptarUsuario } = require('../adapters/usuario.adapter');
 
+/**
+ * Registra un nuevo usuario en ClickMarket con rol Comprador.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con el usuario registrado adaptado
+ */
 async function registrarUsuario(req, res) {
   try {
     const { nombre, apellido, correo, contrasena } = req.body;
@@ -38,6 +45,14 @@ async function registrarUsuario(req, res) {
   }
 }
 
+/**
+ * Inicia sesión de un usuario verificando sus credenciales.
+ * Regenera la sesión para prevenir fijación de sesión.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la sesión creada o un error 401
+ */
 async function iniciarSesion(req, res) {
   try {
     const { correo, contrasena } = req.body;
@@ -85,6 +100,13 @@ async function iniciarSesion(req, res) {
   }
 }
 
+/**
+ * Devuelve los datos del usuario de la sesión activa.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {void} Responde con el usuario en sesión o un error 401
+ */
 function obtenerSesion(req, res) {
   if (!req.session?.usuario) {
     return res.status(401).json({
@@ -97,6 +119,13 @@ function obtenerSesion(req, res) {
   });
 }
 
+/**
+ * Cierra la sesión activa del usuario y elimina la cookie de sesión.
+ *
+ * @param {object} req Objeto de solicitud HTTP de Express
+ * @param {object} res Objeto de respuesta HTTP de Express
+ * @returns {Promise<void>} Responde con la confirmación de cierre
+ */
 async function cerrarSesion(req, res) {
   if (!req.session?.usuario) {
     return res.status(401).json({
