@@ -35,7 +35,6 @@ import {
   assignUserRole,
   deactivateUser,
   getUser,
-  getCategory,
   getProduct,
   getProductImages,
   getProductInventory,
@@ -73,9 +72,10 @@ function App() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
-  const [view, setView] = useState('catalog')
+  const [view, setView] = useState('home')
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
+  const [catalogProducts, setCatalogProducts] = useState([])
   const [categoryId, setCategoryId] = useState('')
   const [search, setSearch] = useState('')
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -148,6 +148,11 @@ function App() {
     (method) => String(method.MetodoPagoID) === selectedPaymentMethodId
   )
   const checkoutShippingCost = Number(selectedShipping?.Costo || 0)
+  const shopCategories = categories.filter((category) =>
+    catalogProducts.some((product) =>
+      String(product.CategoriaID) === String(category.CategoriaID)
+    )
+  )
 
   useEffect(() => {
     getSession()
@@ -161,6 +166,7 @@ function App() {
       .then(([nextCategories, nextProducts]) => {
         setCategories(nextCategories)
         setProducts(nextProducts)
+        setCatalogProducts(nextProducts)
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setCatalogLoading(false))
@@ -189,6 +195,7 @@ function App() {
     setCatalogLoading(true)
     setError('')
     setCategoryId(nextCategoryId)
+    setSelectedProductDetail(null)
     try {
       setProducts(await getProducts({
         categoryId: nextCategoryId || undefined,
@@ -205,22 +212,39 @@ function App() {
   }
 
   async function browseCategory(nextCategoryId) {
+    setView('search')
     await filterProducts(null, nextCategoryId, search)
-    document.getElementById('catalog-products')?.scrollIntoView({
+    document.getElementById('search-page-title')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start'
     })
   }
 
-  async function handleCategoryChange(categoryId) {
-    setCategoryId(categoryId)
-    setCategoryDetail(null)
-    if (!categoryId) return
-    try {
-      setCategoryDetail(await getCategory(categoryId))
-    } catch (requestError) {
-      setError(requestError.message)
-    }
+  async function returnHome() {
+    setView('home')
+    setSearch('')
+    setSelectedProductDetail(null)
+    await filterProducts(null, '', '')
+  }
+
+  async function openSearch(event) {
+    event?.preventDefault()
+    setView('search')
+    await filterProducts(null, categoryId, search)
+    document.getElementById('search-page-title')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+  }
+
+  async function openFullCatalog() {
+    setSearch('')
+    setView('search')
+    await filterProducts(null, '', '')
+    document.getElementById('search-page-title')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
   }
 
   async function handleAddToCart(productoID) {
@@ -435,6 +459,7 @@ function App() {
   }
 
   async function openProductDetail(productId) {
+    setView('search')
     setBusy(true)
     setError('')
     try {
@@ -590,7 +615,7 @@ function App() {
   async function openSeller() {
     if (user?.rol !== 'Vendedor') {
       setError('Tu cuenta debe tener el rol Vendedor.')
-      setView('catalog')
+      setView('home')
       return
     }
 
@@ -666,6 +691,7 @@ function App() {
         precio: Number(editingProduct.Precio)
       })
       setSellerProducts(await getProducts({ vendorId: seller.VendedorID }))
+      setCatalogProducts(await getProducts())
       setEditingProduct(null)
       setMessage('Producto actualizado.')
     } catch (requestError) {
@@ -795,6 +821,7 @@ function App() {
         image: productForm.imagen
       })
       setSellerProducts(await getProducts({ vendorId: seller.VendedorID }))
+      setCatalogProducts(await getProducts())
       setProductForm({ categoriaID: '', nombre: '', descripcion: '', precio: '', cantidad: '', imagen: null })
       setMessage('Producto publicado.')
     } catch (requestError) {
@@ -810,6 +837,7 @@ function App() {
     try {
       await deactivateProduct(productId)
       setSellerProducts(await getProducts({ vendorId: seller.VendedorID }))
+      setCatalogProducts(await getProducts())
       setMessage('Producto desactivado.')
     } catch (requestError) {
       setError(requestError.message)
@@ -821,7 +849,7 @@ function App() {
   async function openAdmin() {
     if (user?.rol !== 'Administrador') {
       setError('Tu cuenta debe tener el rol Administrador.')
-      setView('catalog')
+      setView('home')
       return
     }
 
@@ -1069,6 +1097,58 @@ function App() {
     }
   }
 
+  function renderProductCards(productList) {
+    return (
+      <div className="catalog-grid shop-product-grid">
+        {productList.map((product) => {
+          const stock = Number(product.CantidadDisponible || 0)
+          return (
+            <article className="catalog-card shop-product-card" key={product.ProductoID}>
+              <div className="shop-product-image">
+                {product.ImagenURL ? (
+                  <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />
+                ) : (
+                  <span aria-hidden="true">CM</span>
+                )}
+                <span className={`shop-stock-badge${stock < 1 ? ' is-unavailable' : ''}`}>
+                  {stock > 0 ? 'Disponible' : 'Agotado'}
+                </span>
+              </div>
+              <div className="shop-product-body">
+                <h3>{product.Nombre}</h3>
+                <p>{product.Descripcion || 'Descubre más detalles de este producto.'}</p>
+                <div className="shop-product-meta">
+                  <strong>₡{Number(product.Precio || 0).toLocaleString('es-CR')}</strong>
+                  <span>{stock > 0 ? `${stock} disponibles` : 'Sin existencias'}</span>
+                </div>
+                <div className="shop-product-actions">
+                  <button
+                    aria-label={`Ver detalles de ${product.Nombre}`}
+                    className="admin-action-button admin-action-secondary"
+                    disabled={busy}
+                    onClick={() => openProductDetail(product.ProductoID)}
+                    type="button"
+                  >
+                    Ver detalles
+                  </button>
+                  <button
+                    aria-label={`Agregar ${product.Nombre} al carrito`}
+                    className="dialog-primary"
+                    disabled={busy || stock < 1}
+                    onClick={() => handleAddToCart(product.ProductoID)}
+                    type="button"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    )
+  }
+
   if (sessionLoading) {
     return (
       <div className="storefront">
@@ -1088,7 +1168,7 @@ function App() {
           <a aria-label="ClickMarket, ir al inicio" className="brand-link" href="/">
             <img alt="ClickMarket" src={clickMarketLogo} />
           </a>
-          <form className="search-form" onSubmit={filterProducts} role="search">
+          <form className="search-form" onSubmit={openSearch} role="search">
             <input
               aria-label="Buscar productos"
               onChange={(event) => setSearch(event.target.value)}
@@ -1133,19 +1213,27 @@ function App() {
             </button>
           </nav>
         </div>
-        {view === 'catalog' && (
+        {(view === 'home' || view === 'search') && (
           <nav aria-label="Explorar catálogo" className="shop-category-nav">
             <div className="shop-category-nav-inner">
-              <a href="#shop-categories">Categorías</a>
               <button
-                aria-pressed={!categoryId}
-                className={!categoryId ? 'is-active' : ''}
-                onClick={() => browseCategory('')}
+                className={view === 'home' ? 'is-active' : ''}
+                onClick={returnHome}
                 type="button"
               >
-                Ver todo
+                Inicio
               </button>
-              {categories.map((category) => {
+              <a href={view === 'home' ? '#shop-categories' : '#catalog-filters'}>
+                {view === 'home' ? 'Categorías' : 'Filtros'}
+              </a>
+              <button
+                className={view === 'search' ? 'is-active' : ''}
+                onClick={openFullCatalog}
+                type="button"
+              >
+                Catálogo
+              </button>
+              {shopCategories.map((category) => {
                 const id = String(category.CategoriaID)
                 return (
                   <button
@@ -1724,19 +1812,19 @@ function App() {
               </>
             )}
           </section>
-        ) : view === 'catalog' ? (
-          <section className="catalog-view shop-catalog" aria-labelledby="catalog-title">
+        ) : view === 'home' ? (
+          <section className="shop-catalog shop-home" aria-label="Inicio de ClickMarket">
             <section aria-labelledby="shop-hero-title" className="shop-hero">
               <div className="shop-hero-copy">
                 <span className="shop-eyebrow">TU TIENDA EN LÍNEA EN COSTA RICA</span>
                 <h1 id="shop-hero-title">Encuentra eso que buscas, <em>más fácil.</em></h1>
                 <p>Explora productos de distintas categorías y encuentra todo para tu día a día en un solo lugar.</p>
-                <a className="shop-hero-cta" href="#catalog-products">
+                <button className="shop-hero-cta" onClick={openFullCatalog} type="button">
                   Explorar productos
                   <svg aria-hidden="true" viewBox="0 0 20 20">
                     <path d="M4 10h12m-5-5 5 5-5 5" />
                   </svg>
-                </a>
+                </button>
                 <div className="shop-hero-note">
                   <span aria-hidden="true">✓</span>
                   Compra sencilla, con precios en colones
@@ -1778,17 +1866,17 @@ function App() {
               </article>
             </div>
 
-            {categories.length > 0 && (
+            {shopCategories.length > 0 && (
               <section aria-labelledby="shop-categories-title" className="shop-categories" id="shop-categories">
                 <div className="shop-section-heading">
                   <div>
                     <span className="shop-section-eyebrow">ENCUENTRA LO QUE NECESITAS</span>
                     <h2 id="shop-categories-title">Explora por categoría</h2>
                   </div>
-                  <span className="shop-section-caption">{categories.length} categorías</span>
+                  <span className="shop-section-caption">{shopCategories.length} categorías</span>
                 </div>
                 <div className="shop-category-grid">
-                  {categories.map((category, index) => {
+                  {shopCategories.map((category, index) => {
                     const id = String(category.CategoriaID)
                     return (
                       <button
@@ -1810,132 +1898,137 @@ function App() {
               </section>
             )}
 
-            <section aria-labelledby="catalog-title" className="shop-products-section" id="catalog-products">
+            <section aria-labelledby="home-featured-title" className="shop-products-section" id="home-featured-products">
               <div className="shop-products-heading">
                 <div>
-                  <span className="shop-section-eyebrow">SELECCIÓN PARA TI</span>
-                  <h2 id="catalog-title">{categoryDetail?.Nombre ? `Productos de ${categoryDetail.Nombre}` : 'Descubre productos'}</h2>
-                  <p>Encuentra tu próximo favorito entre los productos disponibles.</p>
+                  <span className="shop-section-eyebrow">UNA SELECCIÓN PARA EMPEZAR</span>
+                  <h2 id="home-featured-title">Productos destacados</h2>
+                  <p>Algunos artículos disponibles para descubrir.</p>
                 </div>
-                {!catalogLoading && (
-                  <span className="shop-product-count">
-                    {products.length} {products.length === 1 ? 'producto' : 'productos'}
-                  </span>
-                )}
-              </div>
-
-              <form className="catalog-filter shop-catalog-filter" onSubmit={filterProducts}>
-                <label>
-                  Filtrar por categoría
-                  <select
-                    onChange={(event) => handleCategoryChange(event.target.value)}
-                    value={categoryId}
-                  >
-                    <option value="">Todas las categorías</option>
-                    {categories.map((category) => (
-                      <option key={category.CategoriaID} value={category.CategoriaID}>
-                        {category.Nombre}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button className="dialog-primary" type="submit" disabled={catalogLoading}>
-                  {catalogLoading ? 'Cargando...' : 'Aplicar filtro'}
+                <button className="shop-view-all" onClick={openFullCatalog} type="button">
+                  Ver catálogo completo
+                  <svg aria-hidden="true" viewBox="0 0 20 20">
+                    <path d="M4 10h12m-5-5 5 5-5 5" />
+                  </svg>
                 </button>
-              </form>
-
-              {categoryDetail?.Descripcion && (
-                <p className="shop-category-description">{categoryDetail.Descripcion}</p>
-              )}
-
-              {selectedProductDetail && (
-                <div className="catalog-card shop-product-detail">
-                  <h3>{selectedProductDetail.product.Nombre}</h3>
-                  <p>{selectedProductDetail.product.Descripcion || 'Sin descripción'}</p>
-                  <strong>₡{Number(selectedProductDetail.product.Precio || 0).toLocaleString('es-CR')}</strong>
-                  <p>Existencias: {Number(selectedProductDetail.inventory?.CantidadDisponible ?? selectedProductDetail.inventory?.cantidaddisponible ?? 0)}</p>
-                  {selectedProductDetail.images.length > 0 && (
-                    <div className="product-detail-images">
-                      {selectedProductDetail.images.map((image) => (
-                        <div className={`product-detail-image${image.EsPrincipal ?? image.esprincipal ? ' is-main' : ''}`} key={image.ImagenID ?? image.imagenid}>
-                          <img alt={(image.EsPrincipal ?? image.esprincipal) ? `Imagen principal de ${selectedProductDetail.product.Nombre}` : `${selectedProductDetail.product.Nombre}`} src={resolveImageUrl(image.ImagenURL ?? image.imagenurl)} />
-                          {(image.EsPrincipal ?? image.esprincipal) && <span>Portada</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setSelectedProductDetail(null)}>Cerrar detalle</button>
-                </div>
-              )}
+              </div>
 
               {catalogLoading ? (
                 <p className="shop-loading" role="status">Cargando productos...</p>
               ) : products.length === 0 ? (
                 <div className="shop-empty-state">
-                  <span aria-hidden="true">⌕</span>
-                  <h3>No encontramos productos</h3>
-                  <p>Prueba con otra búsqueda o explora todas las categorías.</p>
-                  <button
-                    className="admin-action-button admin-action-secondary"
-                    onClick={() => {
-                      setSearch('')
-                      filterProducts(null, '', '')
-                    }}
-                    type="button"
-                  >
-                    Ver todos los productos
-                  </button>
+                  <p>No hay productos disponibles en este momento.</p>
                 </div>
               ) : (
-                <div className="catalog-grid shop-product-grid">
-                  {products.map((product) => {
-                    const stock = Number(product.CantidadDisponible || 0)
-                    return (
-                      <article className="catalog-card shop-product-card" key={product.ProductoID}>
-                        <div className="shop-product-image">
-                          {product.ImagenURL ? (
-                            <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />
-                          ) : (
-                            <span aria-hidden="true">CM</span>
-                          )}
-                          <span className={`shop-stock-badge${stock < 1 ? ' is-unavailable' : ''}`}>
-                            {stock > 0 ? 'Disponible' : 'Agotado'}
-                          </span>
-                        </div>
-                        <div className="shop-product-body">
-                          <h3>{product.Nombre}</h3>
-                          <p>{product.Descripcion || 'Descubre más detalles de este producto.'}</p>
-                          <div className="shop-product-meta">
-                            <strong>₡{Number(product.Precio || 0).toLocaleString('es-CR')}</strong>
-                            <span>{stock > 0 ? `${stock} disponibles` : 'Sin existencias'}</span>
-                          </div>
-                          <div className="shop-product-actions">
-                            <button
-                              aria-label={`Ver detalles de ${product.Nombre}`}
-                              className="admin-action-button admin-action-secondary"
-                              disabled={busy}
-                              onClick={() => openProductDetail(product.ProductoID)}
-                              type="button"
-                            >
-                              Ver detalles
-                            </button>
-                            <button
-                              aria-label={`Agregar ${product.Nombre} al carrito`}
-                              className="dialog-primary"
-                              disabled={busy || stock < 1}
-                              onClick={() => handleAddToCart(product.ProductoID)}
-                              type="button"
-                            >
-                              Agregar
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    )
-                  })}
-                </div>
+                renderProductCards(products.slice(0, 4))
               )}
             </section>
+          </section>
+        ) : view === 'search' ? (
+          <section className="catalog-view shop-catalog shop-search-page">
+            <div className="shop-search-heading" id="search-page-title">
+              <div>
+                <span className="shop-section-eyebrow">
+                  {search.trim() ? 'BÚSQUEDA DE PRODUCTOS' : 'CATÁLOGO CLICKMARKET'}
+                </span>
+                <h1>
+                  {search.trim()
+                    ? `Resultados para “${search.trim()}”`
+                    : categoryDetail?.Nombre
+                      ? `Productos de ${categoryDetail.Nombre}`
+                      : 'Explora el catálogo'}
+                </h1>
+                <p>
+                  {search.trim()
+                    ? 'Revisa los resultados y ajusta la categoría si lo necesitas.'
+                    : 'Busca entre todos los productos disponibles y filtra por categoría.'}
+                </p>
+              </div>
+              <button className="shop-back-home" onClick={returnHome} type="button">
+                Volver al inicio
+              </button>
+            </div>
+
+            {error && <p className="dialog-error" role="alert">{error}</p>}
+
+            <div className="shop-search-layout">
+              <aside aria-labelledby="search-filter-title" className="shop-search-sidebar" id="catalog-filters">
+                <h2 id="search-filter-title">Categorías</h2>
+                <button
+                  aria-pressed={!categoryId}
+                  className={!categoryId ? 'is-selected' : ''}
+                  onClick={() => browseCategory('')}
+                  type="button"
+                >
+                  Todas las categorías
+                </button>
+                {shopCategories.map((category) => {
+                  const id = String(category.CategoriaID)
+                  return (
+                    <button
+                      aria-pressed={categoryId === id}
+                      className={categoryId === id ? 'is-selected' : ''}
+                      key={category.CategoriaID}
+                      onClick={() => browseCategory(id)}
+                      type="button"
+                    >
+                      {category.Nombre}
+                    </button>
+                  )
+                })}
+                {(search.trim() || categoryId) && (
+                  <button className="shop-reset-filters" onClick={openFullCatalog} type="button">
+                    Limpiar filtros
+                  </button>
+                )}
+              </aside>
+
+              <section aria-label="Resultados del catálogo" className="shop-search-results" id="catalog-products">
+                <div className="shop-search-toolbar">
+                  <span>
+                    {catalogLoading
+                      ? 'Buscando productos...'
+                      : `${products.length} ${products.length === 1 ? 'producto' : 'productos'}`}
+                  </span>
+                  {categoryDetail?.Descripcion && <span>{categoryDetail.Descripcion}</span>}
+                </div>
+
+                {selectedProductDetail && (
+                  <div className="catalog-card shop-product-detail">
+                    <h2>{selectedProductDetail.product.Nombre}</h2>
+                    <p>{selectedProductDetail.product.Descripcion || 'Sin descripción'}</p>
+                    <strong>₡{Number(selectedProductDetail.product.Precio || 0).toLocaleString('es-CR')}</strong>
+                    <p>Existencias: {Number(selectedProductDetail.inventory?.CantidadDisponible ?? selectedProductDetail.inventory?.cantidaddisponible ?? 0)}</p>
+                    {selectedProductDetail.images.length > 0 && (
+                      <div className="product-detail-images">
+                        {selectedProductDetail.images.map((image) => (
+                          <div className={`product-detail-image${image.EsPrincipal ?? image.esprincipal ? ' is-main' : ''}`} key={image.ImagenID ?? image.imagenid}>
+                            <img alt={(image.EsPrincipal ?? image.esprincipal) ? `Imagen principal de ${selectedProductDetail.product.Nombre}` : `${selectedProductDetail.product.Nombre}`} src={resolveImageUrl(image.ImagenURL ?? image.imagenurl)} />
+                            {(image.EsPrincipal ?? image.esprincipal) && <span>Portada</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setSelectedProductDetail(null)}>Cerrar detalle</button>
+                  </div>
+                )}
+
+                {catalogLoading ? (
+                  <p className="shop-loading" role="status">Cargando productos...</p>
+                ) : products.length === 0 ? (
+                  <div className="shop-empty-state">
+                    <span aria-hidden="true">⌕</span>
+                    <h2>No encontramos productos</h2>
+                    <p>Prueba con otra búsqueda o explora todas las categorías.</p>
+                    <button className="admin-action-button admin-action-secondary" onClick={openFullCatalog} type="button">
+                      Ver catálogo completo
+                    </button>
+                  </div>
+                ) : (
+                  renderProductCards(products)
+                )}
+              </section>
+            </div>
           </section>
         ) : (
           <section className={user ? 'app-dialog account-dialog' : 'app-dialog'} aria-labelledby="auth-title">
