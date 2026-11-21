@@ -3,6 +3,7 @@ const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
+const { adaptarImagen } = require('../adapters/imagen.adapter');
 
 function detectImageType(buffer) {
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
@@ -29,13 +30,7 @@ async function listarImagenes(req, res) {
       [productoID]
     );
 
-    const imagenes = resultado.rows.map(i => ({
-      ImagenID: i.imagenid,
-      ProductoID: i.productoid,
-      ImagenURL: i.imagenurl,
-      EsPrincipal: i.esprincipal,
-      Orden: i.orden
-    }));
+    const imagenes = resultado.rows.map(adaptarImagen);
 
     return res.json(imagenes);
 
@@ -97,13 +92,7 @@ async function agregarImagen(req, res) {
 
     return res.status(201).json({
       mensaje: 'Imagen agregada correctamente',
-      imagen: {
-        ImagenID: i.imagenid,
-        ProductoID: i.productoid,
-        ImagenURL: i.imagenurl,
-        EsPrincipal: i.esprincipal,
-        Orden: i.orden
-      }
+      imagen: adaptarImagen(i)
     });
 
   } catch (error) {
@@ -134,13 +123,7 @@ async function establecerPrincipal(req, res) {
       [imagenID, vendedor.rows[0].vendedorid]
     );
 
-    const imagenes = resultado.rows.map(i => ({
-      ImagenID: i.imagenid,
-      ProductoID: i.productoid,
-      ImagenURL: i.imagenurl,
-      EsPrincipal: i.esprincipal,
-      Orden: i.orden
-    }));
+    const imagenes = resultado.rows.map(adaptarImagen);
 
     return res.json({
       mensaje: 'Imagen principal actualizada correctamente',

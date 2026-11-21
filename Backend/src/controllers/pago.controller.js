@@ -3,6 +3,7 @@ const { getPool } = require('../config/database');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarPago } = require('../adapters/pago.adapter');
 
 // Registrar pago
 async function registrarPago(req, res) {
@@ -20,14 +21,7 @@ async function registrarPago(req, res) {
 
     return res.status(201).json({
       mensaje: 'Pago registrado correctamente',
-      pago: {
-        PagoID: p.pagoid,
-        PedidoID: p.pedidoid,
-        MetodoPagoID: p.metodopagoid,
-        Monto: p.monto,
-        Estado: p.estado,
-        FechaPago: p.fechapago
-      }
+      pago: adaptarPago(p)
     });
 
   } catch (error) {
@@ -57,14 +51,7 @@ async function consultarPago(req, res) {
       });
     }
 
-    return res.json({
-      PagoID: p.pagoid,
-      PedidoID: p.pedidoid,
-      MetodoPagoID: p.metodopagoid,
-      Monto: p.monto,
-      Estado: p.estado,
-      FechaPago: p.fechapago
-    });
+    return res.json(adaptarPago(p));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar pago');
@@ -82,14 +69,7 @@ async function listarPagosPorPedido(req, res) {
       [pedidoID]
     );
 
-    return res.json(resultado.rows.map(p => ({
-      PagoID: p.pagoid,
-      PedidoID: p.pedidoid,
-      MetodoPagoID: p.metodopagoid,
-      Monto: p.monto,
-      Estado: p.estado,
-      FechaPago: p.fechapago
-    })));
+    return res.json(resultado.rows.map(adaptarPago));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar pagos');
@@ -133,14 +113,7 @@ async function aprobarPago(req, res) {
 
     return res.json({
       mensaje: 'Pago aprobado y pedido confirmado',
-      pago: p ? {
-        PagoID: p.pagoid,
-        PedidoID: p.pedidoid,
-        MetodoPagoID: p.metodopagoid,
-        Monto: p.monto,
-        Estado: p.estado,
-        FechaPago: p.fechapago
-      } : null
+      pago: p ? adaptarPago(p) : null
     });
 
   } catch (error) {
@@ -180,14 +153,7 @@ async function rechazarPago(req, res) {
 
     return res.json({
       mensaje: 'Pago rechazado correctamente',
-      pago: p ? {
-        PagoID: p.pagoid,
-        PedidoID: p.pedidoid,
-        MetodoPagoID: p.metodopagoid,
-        Monto: p.monto,
-        Estado: p.estado,
-        FechaPago: p.fechapago
-      } : null
+      pago: p ? adaptarPago(p) : null
     });
 
   } catch (error) {

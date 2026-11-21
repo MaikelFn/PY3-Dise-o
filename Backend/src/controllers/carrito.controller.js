@@ -1,5 +1,6 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarCarrito } = require('../adapters/carrito.adapter');
 
 // Obtener o crear carrito
 async function obtenerOCrearCarrito(req, res) {
@@ -13,11 +14,7 @@ async function obtenerOCrearCarrito(req, res) {
 
     const c = resultado.rows[0];
 
-    return res.json({
-      CarritoID: c.carritoid,
-      UsuarioID: c.usuarioid,
-      FechaCreacion: c.fechacreacion
-    });
+    return res.json(adaptarCarrito(c));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al obtener carrito');
@@ -34,11 +31,7 @@ async function consultarCarrito(req, res) {
       [req.session.usuario.id]
     );
 
-    const carrito = resultado.rows.map(c => ({
-      CarritoID: c.carritoid,
-      UsuarioID: c.usuarioid,
-      FechaCreacion: c.fechacreacion
-    }));
+    const carrito = resultado.rows.map(adaptarCarrito);
 
     return res.json(carrito);
 

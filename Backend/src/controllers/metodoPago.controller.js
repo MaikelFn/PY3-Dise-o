@@ -1,6 +1,7 @@
 
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarMetodoPago } = require('../adapters/metodoPago.adapter');
 
 async function listarMetodosPago(req, res) {
   try {
@@ -10,11 +11,7 @@ async function listarMetodosPago(req, res) {
       'SELECT * FROM public.sp_metodospago_listar()'
     );
 
-    const metodosPago = resultado.rows.map(m => ({
-      MetodoPagoID: m.metodopagoid,
-      Nombre: m.nombre,
-      Descripcion: m.descripcion
-    }));
+    const metodosPago = resultado.rows.map(adaptarMetodoPago);
 
     return res.json(metodosPago);
 

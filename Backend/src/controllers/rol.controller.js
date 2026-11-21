@@ -1,5 +1,6 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarRol } = require('../adapters/rol.adapter');
 
 // Listar roles
 async function listarRoles(req, res) {
@@ -10,11 +11,7 @@ async function listarRoles(req, res) {
       'SELECT * FROM public.sp_roles_listar()'
     );
 
-    const roles = resultado.rows.map(r => ({
-      RolID: r.rolid,
-      Nombre: r.nombre,
-      Descripcion: r.descripcion
-    }));
+    const roles = resultado.rows.map(adaptarRol);
 
     return res.json(roles);
 

@@ -2,6 +2,7 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
+const { adaptarDetallePedido } = require('../adapters/detallePedido.adapter');
 
 async function listarDetallesPedido(req, res) {
   try {
@@ -22,14 +23,7 @@ async function listarDetallesPedido(req, res) {
       [pedidoID]
     );
 
-    const detalles = resultado.rows.map(d => ({
-      DetallePedidoID: d.detallepedidoid,
-      PedidoID: d.pedidoid,
-      ProductoID: d.productoid,
-      Cantidad: d.cantidad,
-      PrecioUnitario: d.preciounitario,
-      Subtotal: d.subtotal
-    }));
+    const detalles = resultado.rows.map(adaptarDetallePedido);
 
     return res.json(detalles);
 

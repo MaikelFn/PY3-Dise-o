@@ -1,6 +1,7 @@
 
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarEstadoPedido } = require('../adapters/estadoPedido.adapter');
 
 async function listarEstados(req, res) {
   try {
@@ -10,11 +11,7 @@ async function listarEstados(req, res) {
       'SELECT * FROM public.sp_estadospedido_listar()'
     );
 
-    const estados = resultado.rows.map(e => ({
-      EstadoPedidoID: e.estadopedidoid,
-      Nombre: e.nombre,
-      Descripcion: e.descripcion
-    }));
+    const estados = resultado.rows.map(adaptarEstadoPedido);
 
     return res.json(estados);
 

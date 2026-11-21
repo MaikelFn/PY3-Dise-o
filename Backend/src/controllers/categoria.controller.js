@@ -1,5 +1,6 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarCategoria } = require('../adapters/categoria.adapter');
 
 // Listar categorías
 async function listarCategorias(req, res) {
@@ -10,11 +11,7 @@ async function listarCategorias(req, res) {
       'SELECT * FROM public.sp_categorias_listar()'
     );
 
-    const categorias = resultado.rows.map(c => ({
-      CategoriaID: c.categoriaid,
-      Nombre: c.nombre,
-      Descripcion: c.descripcion
-    }));
+    const categorias = resultado.rows.map(adaptarCategoria);
 
     return res.json(categorias);
 
@@ -43,11 +40,7 @@ async function consultarCategoria(req, res) {
 
     const c = resultado.rows[0];
 
-    return res.json({
-      CategoriaID: c.categoriaid,
-      Nombre: c.nombre,
-      Descripcion: c.descripcion
-    });
+    return res.json(adaptarCategoria(c));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar categoría');
@@ -70,11 +63,7 @@ async function crearCategoria(req, res) {
 
     return res.status(201).json({
       mensaje: 'Categoría creada correctamente',
-      categoria: {
-        CategoriaID: c.categoriaid,
-        Nombre: c.nombre,
-        Descripcion: c.descripcion
-      }
+      categoria: adaptarCategoria(c)
     });
 
   } catch (error) {
@@ -99,11 +88,7 @@ async function actualizarCategoria(req, res) {
 
     return res.json({
       mensaje: 'Categoría actualizada correctamente',
-      categoria: {
-        CategoriaID: c.categoriaid,
-        Nombre: c.nombre,
-        Descripcion: c.descripcion
-      }
+      categoria: adaptarCategoria(c)
     });
 
   } catch (error) {

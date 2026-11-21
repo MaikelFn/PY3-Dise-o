@@ -1,6 +1,7 @@
 
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarDireccion } = require('../adapters/direccion.adapter');
 
 // Listar direcciones
 async function listarDirecciones(req, res) {
@@ -12,15 +13,7 @@ async function listarDirecciones(req, res) {
       [req.session.usuario.id]
     );
 
-    return res.json(resultado.rows.map(d => ({
-      DireccionID: d.direccionid,
-      UsuarioID: d.usuarioid,
-      Provincia: d.provincia,
-      Canton: d.canton,
-      Distrito: d.distrito,
-      Detalle: d.detalle,
-      Principal: d.principal
-    })));
+    return res.json(resultado.rows.map(adaptarDireccion));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar direcciones');
@@ -49,15 +42,7 @@ async function agregarDireccion(req, res) {
 
     return res.status(201).json({
       mensaje: 'Dirección agregada correctamente',
-      direccion: {
-        DireccionID: d.direccionid,
-        UsuarioID: d.usuarioid,
-        Provincia: d.provincia,
-        Canton: d.canton,
-        Distrito: d.distrito,
-        Detalle: d.detalle,
-        Principal: d.principal
-      }
+      direccion: adaptarDireccion(d)
     });
 
   } catch (error) {
@@ -90,15 +75,7 @@ async function actualizarDireccion(req, res) {
 
     return res.json({
       mensaje: 'Dirección actualizada correctamente',
-      direccion: {
-        DireccionID: d.direccionid,
-        UsuarioID: d.usuarioid,
-        Provincia: d.provincia,
-        Canton: d.canton,
-        Distrito: d.distrito,
-        Detalle: d.detalle,
-        Principal: d.principal
-      }
+      direccion: adaptarDireccion(d)
     });
 
   } catch (error) {

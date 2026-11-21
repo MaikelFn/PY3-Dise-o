@@ -2,6 +2,14 @@
 const { getPool } = require('../config/database');
 const { publicarEvento } = require('../events/pedido.events');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarPago } = require('../adapters/pago.adapter');
+const {
+  adaptarPedido,
+  adaptarPedidoLista,
+  adaptarPedidoAdmin,
+  adaptarPedidoVendedor,
+  adaptarPedidoResumen
+} = require('../adapters/pedido.adapter');
 
 // Verificar acceso al pedido
 async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
@@ -166,14 +174,7 @@ async function crearPedidoConPagoSimulado(req, res) {
     return res.status(201).json({
       mensaje: 'Pedido confirmado mediante un pago simulado; no se procesó dinero real',
       pedidoID,
-      pago: {
-        PagoID: pago.pagoid,
-        PedidoID: pago.pedidoid,
-        MetodoPagoID: pago.metodopagoid,
-        Monto: pago.monto,
-        Estado: pago.estado,
-        FechaPago: pago.fechapago
-      }
+      pago: adaptarPago(pago)
     });
   } catch (error) {
     if (cliente && transaccionIniciada) {
@@ -218,15 +219,7 @@ async function consultarPedido(req, res) {
       });
     }
 
-    return res.json({
-      PedidoID: p.pedidoid,
-      UsuarioID: p.usuarioid,
-      DireccionID: p.direccionid,
-      TipoEnvioID: p.tipoenvioid,
-      EstadoPedidoID: p.estadopedidoid,
-      FechaPedido: p.fechapedido,
-      Total: p.total
-    });
+    return res.json(adaptarPedido(p));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar pedido');
@@ -243,15 +236,7 @@ async function listarPedidos(req, res) {
       [req.session.usuario.id]
     );
 
-    return res.json(resultado.rows.map(p => ({
-      PedidoID: p.pedidoid,
-      UsuarioID: p.usuarioid,
-      DireccionID: p.direccionid,
-      Estado: p.estadopedido,
-      FechaPedido: p.fechapedido,
-      Subtotal: p.subtotal,
-      Total: p.total
-    })));
+    return res.json(resultado.rows.map(adaptarPedidoLista));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar pedidos');
@@ -265,14 +250,7 @@ async function listarPedidosAdministrador(_req, res) {
       'SELECT * FROM public.sp_pedidos_listaradmin()'
     );
 
-    return res.json(resultado.rows.map(p => ({
-      PedidoID: p.pedidoid,
-      FechaPedido: p.fechapedido,
-      Estado: p.estado,
-      Comprador: p.comprador,
-      CantidadProductos: p.cantidadproductos,
-      Total: p.total
-    })));
+    return res.json(resultado.rows.map(adaptarPedidoAdmin));
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar pedidos para administración');
   }
@@ -286,14 +264,7 @@ async function listarPedidosVendedor(req, res) {
       [req.session.usuario.id]
     );
 
-    return res.json(resultado.rows.map(p => ({
-      PedidoID: p.pedidoid,
-      FechaPedido: p.fechapedido,
-      Estado: p.estado,
-      Comprador: p.comprador,
-      CantidadProductos: p.cantidadproductos,
-      SubtotalVendedor: p.subtotalvendedor
-    })));
+    return res.json(resultado.rows.map(adaptarPedidoVendedor));
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar ventas de la tienda');
   }
@@ -315,12 +286,7 @@ async function confirmarPedido(req, res) {
 
     return res.json({
       mensaje: 'Pedido confirmado correctamente',
-      pedido: {
-        PedidoID: p.pedidoid,
-        UsuarioID: p.usuarioid,
-        EstadoPedidoID: p.estadopedidoid,
-        Total: p.total
-      }
+      pedido: adaptarPedidoResumen(p)
     });
 
   } catch (error) {
@@ -357,12 +323,7 @@ async function cancelarPedido(req, res) {
 
     return res.json({
       mensaje: 'Pedido cancelado e inventario liberado',
-      pedido: {
-        PedidoID: p.pedidoid,
-        UsuarioID: p.usuarioid,
-        EstadoPedidoID: p.estadopedidoid,
-        Total: p.total
-      }
+      pedido: adaptarPedidoResumen(p)
     });
 
   } catch (error) {

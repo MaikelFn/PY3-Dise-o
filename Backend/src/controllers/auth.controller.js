@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const { getPool } = require('../config/database');
 const { promisify } = require('util');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarUsuario } = require('../adapters/usuario.adapter');
 
 async function registrarUsuario(req, res) {
   try {
@@ -29,16 +30,7 @@ async function registrarUsuario(req, res) {
 
     return res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
-      usuario: {
-        UsuarioID: usuario.usuarioid,
-        Nombre: usuario.nombre,
-        Apellido: usuario.apellido,
-        Correo: usuario.correo,
-        RolID: usuario.rolid,
-        Rol: usuario.rol,
-        FechaRegistro: usuario.fecharegistro,
-        Activo: usuario.activo
-      }
+      usuario: adaptarUsuario(usuario)
     });
 
   } catch (error) {

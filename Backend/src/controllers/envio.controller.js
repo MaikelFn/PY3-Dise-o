@@ -3,6 +3,7 @@ const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
 const { usuarioPuedeVerPedido } = require('./pedido.controller');
 const { publicarEvento } = require('../events/pedido.events');
+const { adaptarEnvio } = require('../adapters/envio.adapter');
 
 // Consultar envío
 async function consultarEnvio(req, res) {
@@ -26,15 +27,7 @@ async function consultarEnvio(req, res) {
       });
     }
 
-    return res.json({
-      EnvioID: envio.envioid,
-      PedidoID: envio.pedidoid,
-      TipoEnvioID: envio.tipoenvioid,
-      Estado: envio.estado,
-      NumeroSeguimiento: envio.numeroseguimiento,
-      FechaEnvio: envio.fechaenvio,
-      FechaEntrega: envio.fechaentrega
-    });
+    return res.json(adaptarEnvio(envio));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar envío');
@@ -67,15 +60,7 @@ async function consultarEnvioPorPedido(req, res) {
       return res.json(null);
     }
 
-    return res.json({
-      EnvioID: envio.envioid,
-      PedidoID: envio.pedidoid,
-      TipoEnvioID: envio.tipoenvioid,
-      Estado: envio.estado,
-      NumeroSeguimiento: envio.numeroseguimiento,
-      FechaEnvio: envio.fechaenvio,
-      FechaEntrega: envio.fechaentrega
-    });
+    return res.json(adaptarEnvio(envio));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar envío');
@@ -127,15 +112,7 @@ async function actualizarEstadoEnvio(req, res) {
 
     return res.json({
       mensaje: 'Estado del envío actualizado',
-      envio: {
-        EnvioID: envio.envioid,
-        PedidoID: envio.pedidoid,
-        TipoEnvioID: envio.tipoenvioid,
-        Estado: envio.estado,
-        NumeroSeguimiento: envio.numeroseguimiento,
-        FechaEnvio: envio.fechaenvio,
-        FechaEntrega: envio.fechaentrega
-      }
+      envio: adaptarEnvio(envio)
     });
 
   } catch (error) {

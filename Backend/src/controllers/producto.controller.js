@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const fs = require('fs/promises');
 const path = require('path');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarProducto, adaptarProductoResumen } = require('../adapters/producto.adapter');
 
 // Listar productos
 async function listarProductos(req, res) {
@@ -21,17 +22,7 @@ async function listarProductos(req, res) {
       ]
     );
 
-    return res.json(resultado.rows.map(p => ({
-      ProductoID: p.productoid,
-      VendedorID: p.vendedorid,
-      CategoriaID: p.categoriaid,
-      Nombre: p.nombre,
-      Descripcion: p.descripcion,
-      Precio: p.precio,
-      ImagenURL: p.imagenprincipal,
-      CantidadDisponible: p.cantidaddisponible,
-      Activo: p.activo
-    })));
+    return res.json(resultado.rows.map(adaptarProducto));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar productos');
@@ -56,17 +47,7 @@ async function consultarProducto(req, res) {
       });
     }
 
-    return res.json({
-      ProductoID: p.productoid,
-      VendedorID: p.vendedorid,
-      CategoriaID: p.categoriaid,
-      Nombre: p.nombre,
-      Descripcion: p.descripcion,
-      Precio: p.precio,
-      ImagenURL: p.imagenprincipal,
-      CantidadDisponible: p.cantidaddisponible,
-      Activo: p.activo
-    });
+    return res.json(adaptarProducto(p));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar producto');
@@ -106,15 +87,7 @@ async function crearProducto(req, res) {
 
     return res.status(201).json({
       mensaje: 'Producto creado correctamente',
-      producto: {
-        ProductoID: p.productoid,
-        VendedorID: p.vendedorid,
-        CategoriaID: p.categoriaid,
-        Nombre: p.nombre,
-        Descripcion: p.descripcion,
-        Precio: p.precio,
-        Activo: p.activo
-      }
+      producto: adaptarProductoResumen(p)
     });
 
   } catch (error) {
@@ -254,15 +227,9 @@ async function publicarProducto(req, res) {
     return res.status(201).json({
       mensaje: 'Producto publicado correctamente.',
       producto: {
-        ProductoID: product.productoid,
-        VendedorID: product.vendedorid,
-        CategoriaID: product.categoriaid,
-        Nombre: product.nombre,
-        Descripcion: product.descripcion,
-        Precio: product.precio,
+        ...adaptarProductoResumen(product),
         ImagenURL: imageURL,
-        CantidadDisponible: cantidad,
-        Activo: product.activo
+        CantidadDisponible: cantidad
       }
     });
   } catch (error) {
@@ -327,15 +294,7 @@ async function actualizarProducto(req, res) {
 
     return res.json({
       mensaje: 'Producto actualizado correctamente',
-      producto: {
-        ProductoID: p.productoid,
-        VendedorID: p.vendedorid,
-        CategoriaID: p.categoriaid,
-        Nombre: p.nombre,
-        Descripcion: p.descripcion,
-        Precio: p.precio,
-        Activo: p.activo
-      }
+      producto: adaptarProductoResumen(p)
     });
 
   } catch (error) {
@@ -370,15 +329,7 @@ async function desactivarProducto(req, res) {
 
     return res.json({
       mensaje: 'Producto desactivado correctamente',
-      producto: {
-        ProductoID: p.productoid,
-        VendedorID: p.vendedorid,
-        CategoriaID: p.categoriaid,
-        Nombre: p.nombre,
-        Descripcion: p.descripcion,
-        Precio: p.precio,
-        Activo: p.activo
-      }
+      producto: adaptarProductoResumen(p)
     });
 
   } catch (error) {

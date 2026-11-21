@@ -1,5 +1,6 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarVendedor } = require('../adapters/vendedor.adapter');
 
 // Listar vendedores
 async function listarVendedores(req, res) {
@@ -11,13 +12,7 @@ async function listarVendedores(req, res) {
       [true]
     );
 
-    const vendedores = resultado.rows.map(v => ({
-      VendedorID: v.vendedorid,
-      UsuarioID: v.usuarioid,
-      NombreComercial: v.nombrecomercial,
-      Descripcion: v.descripcion,
-      Activo: v.activo
-    }));
+    const vendedores = resultado.rows.map(adaptarVendedor);
 
     return res.json(vendedores);
 
@@ -46,13 +41,7 @@ async function consultarVendedor(req, res) {
 
     const v = resultado.rows[0];
 
-    return res.json({
-      VendedorID: v.vendedorid,
-      UsuarioID: v.usuarioid,
-      NombreComercial: v.nombrecomercial,
-      Descripcion: v.descripcion,
-      Activo: v.activo
-    });
+    return res.json(adaptarVendedor(v));
 
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar vendedor');
@@ -79,13 +68,7 @@ async function registrarVendedor(req, res) {
 
     return res.status(201).json({
       mensaje: 'Vendedor registrado correctamente',
-      vendedor: {
-        VendedorID: v.vendedorid,
-        UsuarioID: v.usuarioid,
-        NombreComercial: v.nombrecomercial,
-        Descripcion: v.descripcion,
-        Activo: v.activo
-      }
+      vendedor: adaptarVendedor(v)
     });
 
   } catch (error) {
@@ -121,13 +104,7 @@ async function actualizarVendedor(req, res) {
 
     return res.json({
       mensaje: 'Vendedor actualizado correctamente',
-      vendedor: {
-        VendedorID: v.vendedorid,
-        UsuarioID: v.usuarioid,
-        NombreComercial: v.nombrecomercial,
-        Descripcion: v.descripcion,
-        Activo: v.activo
-      }
+      vendedor: adaptarVendedor(v)
     });
 
   } catch (error) {
@@ -151,13 +128,7 @@ async function desactivarVendedor(req, res) {
 
     return res.json({
       mensaje: 'Vendedor desactivado correctamente',
-      vendedor: {
-        VendedorID: v.vendedorid,
-        UsuarioID: v.usuarioid,
-        NombreComercial: v.nombrecomercial,
-        Descripcion: v.descripcion,
-        Activo: v.activo
-      }
+      vendedor: adaptarVendedor(v)
     });
 
   } catch (error) {

@@ -1,18 +1,6 @@
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
-
-function mapearUsuario(usuario) {
-  return {
-    UsuarioID: usuario.usuarioid,
-    Nombre: usuario.nombre,
-    Apellido: usuario.apellido,
-    Correo: usuario.correo,
-    RolID: usuario.rolid,
-    Rol: usuario.rol,
-    FechaRegistro: usuario.fecharegistro,
-    Activo: usuario.activo
-  };
-}
+const { adaptarUsuario } = require('../adapters/usuario.adapter');
 
 async function listarUsuarios(req, res) {
   try {
@@ -22,7 +10,7 @@ async function listarUsuarios(req, res) {
     );
 
     return res.json(
-      resultado.rows.map(mapearUsuario)
+      resultado.rows.map(adaptarUsuario)
     );
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al listar usuarios');
@@ -58,7 +46,7 @@ async function consultarUsuario(req, res) {
     }
 
     return res.json({
-      usuario: mapearUsuario(resultado.rows[0])
+      usuario: adaptarUsuario(resultado.rows[0])
     });
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al consultar usuario');
@@ -108,7 +96,7 @@ async function actualizarUsuario(req, res) {
 
     return res.json({
       mensaje: 'Usuario actualizado correctamente',
-      usuario: mapearUsuario(resultado.rows[0])
+      usuario: adaptarUsuario(resultado.rows[0])
     });
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al actualizar usuario');
@@ -144,7 +132,7 @@ async function desactivarUsuario(req, res) {
 
     return res.json({
       mensaje: 'Usuario desactivado correctamente',
-      usuario: mapearUsuario(resultado.rows[0])
+      usuario: adaptarUsuario(resultado.rows[0])
     });
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al desactivar usuario');
@@ -170,7 +158,7 @@ async function asignarRol(req, res) {
 
     return res.json({
       mensaje: 'Rol asignado correctamente',
-      usuario: mapearUsuario(resultado.rows[0])
+      usuario: adaptarUsuario(resultado.rows[0])
     });
   } catch (error) {
     return manejarErrorPostgres(error, res, 'Error al asignar rol');

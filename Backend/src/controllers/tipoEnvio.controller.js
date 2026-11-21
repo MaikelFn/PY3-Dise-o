@@ -1,6 +1,7 @@
 
 const { getPool } = require('../config/database');
 const { manejarErrorPostgres } = require('../utils/postgresErrors');
+const { adaptarTipoEnvio } = require('../adapters/tipoEnvio.adapter');
 
 async function listarTiposEnvio(req, res) {
   try {
@@ -10,12 +11,7 @@ async function listarTiposEnvio(req, res) {
       'SELECT * FROM public.sp_tiposenvio_listar()'
     );
 
-    const tiposEnvio = resultado.rows.map(t => ({
-      TipoEnvioID: t.tipoenvioid,
-      Nombre: t.nombre,
-      Descripcion: t.descripcion,
-      Costo: t.costobase
-    }));
+    const tiposEnvio = resultado.rows.map(adaptarTipoEnvio);
 
     return res.json(tiposEnvio);
 
