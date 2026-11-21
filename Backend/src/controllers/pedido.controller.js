@@ -10,7 +10,19 @@ async function usuarioPuedeVerPedido(conexion, pedidoID, usuario) {
     [pedidoID, usuario.id]
   );
 
-  return resultado.rows.length > 0;
+  if (resultado.rows.length > 0) return true;
+
+  const vendedorResultado = await conexion.query(`
+    SELECT 1
+    FROM public.detallepedido dp
+    JOIN public.producto p ON p.productoid = dp.productoid
+    JOIN public.vendedor v ON v.vendedorid = p.vendedorid
+    WHERE dp.pedidoid = $1
+      AND v.usuarioid = $2
+    LIMIT 1
+  `, [pedidoID, usuario.id]);
+
+  return vendedorResultado.rows.length > 0;
 }
 
 // Middleware de acceso

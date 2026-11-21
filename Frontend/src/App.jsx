@@ -1,5 +1,33 @@
 import { useEffect, useState } from 'react'
 import {
+  FiBell,
+  FiActivity,
+  FiArrowRight,
+  FiCheck,
+  FiBox,
+  FiDollarSign,
+  FiEdit3,
+  FiEye,
+  FiGrid,
+  FiHome,
+  FiMail,
+  FiMapPin,
+  FiMinus,
+  FiMonitor,
+  FiPackage,
+  FiPlus,
+  FiSave,
+  FiSearch,
+  FiShoppingBag,
+  FiShoppingCart,
+  FiBriefcase,
+  FiTrash2,
+  FiUser,
+  FiX,
+  FiLogOut,
+  FiZap
+} from 'react-icons/fi'
+import {
   addCartItem,
   approvePayment,
   clearCart,
@@ -65,6 +93,16 @@ import {
 import clickMarketLogo from './assets/clickmarket-logo.png'
 import './App.css'
 
+function getCategoryIcon(categoryName) {
+  const name = String(categoryName || '').toLowerCase()
+  if (name.includes('comput')) return FiMonitor
+  if (name.includes('deport')) return FiActivity
+  if (name.includes('electr')) return FiZap
+  if (name.includes('hogar')) return FiHome
+  if (name.includes('ropa') || name.includes('moda')) return FiShoppingBag
+  return FiGrid
+}
+
 function App() {
   const [sessionLoading, setSessionLoading] = useState(true)
   const [user, setUser] = useState(null)
@@ -95,15 +133,19 @@ function App() {
     detalle: ''
   })
   const [orders, setOrders] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
   const [seller, setSeller] = useState(null)
   const [sellerProducts, setSellerProducts] = useState([])
   const [sellerOrders, setSellerOrders] = useState([])
   const [adminOrders, setAdminOrders] = useState([])
   const [roles, setRoles] = useState([])
   const [selectedPaymentIds, setSelectedPaymentIds] = useState({})
+  const [openPaymentIds, setOpenPaymentIds] = useState({})
   const [shippingStates, setShippingStates] = useState({})
   const [notifications, setNotifications] = useState([])
   const [orderDetails, setOrderDetails] = useState({})
+  const [openOrderDetailsIds, setOpenOrderDetailsIds] = useState({})
+  const [openSellerOrderIds, setOpenSellerOrderIds] = useState({})
   const [selectedProductDetail, setSelectedProductDetail] = useState(null)
   const [editingAddress, setEditingAddress] = useState(null)
   const [addingAddress, setAddingAddress] = useState(false)
@@ -116,7 +158,7 @@ function App() {
   const [orderStates, setOrderStates] = useState([])
   const [sellerList, setSellerList] = useState([])
   const [productImages, setProductImages] = useState([])
-  const [newImageURL, setNewImageURL] = useState('')
+  const [newProductImage, setNewProductImage] = useState(null)
   const [userRoleForm, setUserRoleForm] = useState({ userId: '', rolId: '' })
   const [selectedUser, setSelectedUser] = useState(null)
   const [adminSection, setAdminSection] = useState('orders')
@@ -371,7 +413,9 @@ function App() {
       setCartItems([])
       setMessage(`Pedido #${response.pedidoID} creado y pago registrado como pendiente.`)
       setView('orders')
-      setOrders(await getOrders())
+      const loadedOrders = await getOrders()
+      setOrders(loadedOrders)
+      loadedOrders.forEach((order) => openOrderDetails(order.PedidoID, true))
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -381,19 +425,23 @@ function App() {
 
   async function openOrders() {
     setView('orders')
-    setBusy(true)
+    setOrdersLoading(true)
     setError('')
     try {
-      setOrders(await getOrders())
+      const loadedOrders = await getOrders()
+      setOrders(loadedOrders)
+      loadedOrders.forEach((order) => {
+        openOrderDetails(order.PedidoID, true)
+      })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
-      setBusy(false)
+      setOrdersLoading(false)
     }
   }
 
-  async function openOrderDetails(orderId) {
-    setBusy(true)
+  async function openOrderDetails(orderId, silent = false) {
+    if (!silent) setBusy(true)
     setError('')
     try {
       const [order, details, payments, shipping] = await Promise.all([
@@ -429,9 +477,9 @@ function App() {
         }
       }))
     } catch (requestError) {
-      setError(requestError.message)
+      if (!silent) setError(requestError.message)
     } finally {
-      setBusy(false)
+      if (!silent) setBusy(false)
     }
   }
 
@@ -446,6 +494,11 @@ function App() {
         setOrders(await getOrders())
       }
       setOrderDetails((current) => {
+        const next = { ...current }
+        delete next[orderId]
+        return next
+      })
+      setOpenOrderDetailsIds((current) => {
         const next = { ...current }
         delete next[orderId]
         return next
@@ -559,6 +612,8 @@ function App() {
 
   async function openNotifications() {
     setView('notifications')
+    setMessage('')
+    setSelectedNotification(null)
     setBusy(true)
     setError('')
     try {
@@ -719,6 +774,7 @@ function App() {
 
   async function openProductImages(product) {
     setEditingProduct({ ...product })
+    setNewProductImage(null)
     setBusy(true)
     setError('')
     try {
@@ -732,20 +788,20 @@ function App() {
 
   async function handleAddProductImage(event) {
     event.preventDefault()
-    if (!editingProduct || !newImageURL.trim()) {
-      setError('Ingresa la URL de la imagen.')
+    if (!editingProduct || !newProductImage) {
+      setError('Selecciona una imagen.')
       return
     }
     setBusy(true)
     setError('')
     try {
       await addProductImage(editingProduct.ProductoID, {
-        imagenURL: newImageURL.trim(),
+        imagen: newProductImage,
         esPrincipal: productImages.length === 0,
         orden: productImages.length
       })
       setProductImages(await getProductImages(editingProduct.ProductoID))
-      setNewImageURL('')
+      setNewProductImage(null)
       setMessage('Imagen agregada.')
     } catch (requestError) {
       setError(requestError.message)
@@ -978,6 +1034,8 @@ function App() {
     try {
       await approvePayment(paymentId)
       setAdminOrders(await getAdminOrders())
+      setSelectedPaymentIds((current) => ({ ...current, [orderId]: [] }))
+      setOpenPaymentIds((current) => ({ ...current, [orderId]: false }))
       setMessage(`Pago #${paymentId} aprobado.`)
     } catch (requestError) {
       setError(requestError.message)
@@ -986,12 +1044,14 @@ function App() {
     }
   }
 
-  async function handleRejectPayment(paymentId) {
+  async function handleRejectPayment(orderId, paymentId) {
     setBusy(true)
     setError('')
     try {
       await rejectPayment(paymentId)
       setAdminOrders(await getAdminOrders())
+      setSelectedPaymentIds((current) => ({ ...current, [orderId]: [] }))
+      setOpenPaymentIds((current) => ({ ...current, [orderId]: false }))
       setMessage(`Pago #${paymentId} rechazado.`)
     } catch (requestError) {
       setError(requestError.message)
@@ -1009,6 +1069,7 @@ function App() {
         getOrderShipping(orderId)
       ])
       setSelectedPaymentIds((current) => ({ ...current, [orderId]: payments }))
+      setOpenPaymentIds((current) => ({ ...current, [orderId]: true }))
       setShippingStates((current) => ({
         ...current,
         [orderId]: shipping?.Estado ?? shipping?.estado ?? null
@@ -1149,6 +1210,11 @@ function App() {
     )
   }
 
+  const cartCount = cartItems.reduce((total, item) => total + Number(item.Cantidad ?? item.cantidad ?? 0), 0)
+  const unreadNotificationCount = notifications.filter((notification) =>
+    ![true, 1, '1', 'true'].includes(notification.Leida ?? notification.leida)
+  ).length
+
   if (sessionLoading) {
     return (
       <div className="storefront">
@@ -1175,27 +1241,24 @@ function App() {
               placeholder="Tu próximo producto está aquí"
               value={search}
             />
-            <button type="submit">Buscar</button>
+            <button type="submit"><FiSearch aria-hidden="true" />Buscar</button>
           </form>
           <nav aria-label="Acciones de cuenta" className="header-actions">
-            {user && <button className="header-link" type="button">
-              <span>{user.nombre}</span>
-            </button>}
             {user && (
-              <button className="header-link" type="button" onClick={() => setView('cart')}>
-                Carrito ({cartItems.reduce((total, item) => total + Number(item.Cantidad ?? item.cantidad ?? 0), 0)})
+              <button className={`header-link${cartCount > 0 ? ' has-items' : ''}`} type="button" onClick={() => setView('cart')}>
+                <FiShoppingCart aria-hidden="true" />Carrito
+                {cartCount > 0 && <span aria-label={`${cartCount} productos en el carrito`} className="header-count">{cartCount}</span>}
               </button>
             )}
             {user && (
               <button className="header-link" type="button" onClick={openOrders}>
-                Mis pedidos
+                <FiPackage aria-hidden="true" />Mis pedidos
               </button>
             )}
             {user && (
-              <button className="header-link" type="button" onClick={openNotifications}>
-                Notificaciones ({notifications.filter((notification) =>
-                  ![true, 1, '1', 'true'].includes(notification.Leida ?? notification.leida)
-                ).length})
+              <button className={`header-link${unreadNotificationCount > 0 ? ' has-items' : ''}`} type="button" onClick={openNotifications}>
+                <FiBell aria-hidden="true" />Notificaciones
+                {unreadNotificationCount > 0 && <span aria-label={`${unreadNotificationCount} notificaciones sin leer`} className="header-count">{unreadNotificationCount}</span>}
               </button>
             )}
             {user?.rol === 'Vendedor' && (
@@ -1209,7 +1272,7 @@ function App() {
               </button>
             )}
             <button className="header-link" type="button" onClick={openAccount}>
-              {user ? 'Mi cuenta' : 'Iniciar sesión'}
+              <FiUser aria-hidden="true" />{user ? 'Mi cuenta' : 'Iniciar sesión'}
             </button>
           </nav>
         </div>
@@ -1254,45 +1317,85 @@ function App() {
 
       <main className={view === 'account' ? 'account-main' : 'page-main'}>
         {view === 'notifications' ? (
-          <section className="catalog-view" aria-labelledby="notifications-title">
-            <h2 id="notifications-title">Notificaciones</h2>
+          <section className="catalog-view shop-notifications-page" aria-labelledby="notifications-title">
+            <div className="shop-orders-heading shop-notifications-heading">
+              <div>
+                <span className="shop-section-eyebrow">ACTUALIZACIONES DE TU CUENTA</span>
+                <h2 id="notifications-title">Notificaciones</h2>
+              </div>
+              {notifications.length > 0 && (
+                <span className="shop-orders-count">
+                  {unreadNotificationCount} sin leer
+                </span>
+              )}
+            </div>
             {error && <p className="dialog-error" role="alert">{error}</p>}
             {message && <p className="dialog-notice" role="status">{message}</p>}
-            {notifications.length > 0 && (
-              <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={handleMarkAllNotificationsRead} type="button">
-                Marcar todas como leídas
-              </button>
-            )}
-            {selectedNotification && (
-              <div className="catalog-card">
-                <h3>{selectedNotification.Titulo ?? selectedNotification.titulo}</h3>
-                <p>{selectedNotification.Mensaje ?? selectedNotification.mensaje}</p>
-              </div>
-            )}
             {busy ? (
-              <p>Cargando notificaciones...</p>
+              <div className="shop-notifications-list" aria-label="Cargando notificaciones">
+                {[1, 2, 3].map((item) => <div className="shop-notification-skeleton" key={item} />)}
+              </div>
             ) : notifications.length === 0 ? (
-              <p>No tienes notificaciones.</p>
+              <div className="shop-empty-state shop-orders-empty">
+                <span aria-hidden="true"><FiBell /></span>
+                <h3>No tienes notificaciones</h3>
+                <p>Las novedades de tus pedidos aparecerán aquí.</p>
+              </div>
             ) : (
-              <div className="catalog-grid">
-                {notifications.map((notification) => {
-                  const notificationId = notification.NotificacionID ?? notification.notificacionid
-                  const isRead = [true, 1, '1', 'true'].includes(notification.Leida ?? notification.leida)
-                  return (
-                    <article className="catalog-card" key={notificationId}>
-                      <h3>{notification.Titulo ?? notification.titulo}</h3>
-                      <p>{notification.Mensaje ?? notification.mensaje}</p>
-                      <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openNotification(notificationId)} type="button">
-                        Ver detalle
-                      </button>
-                      {!isRead && (
-                        <button className="admin-action-button" disabled={busy} onClick={() => handleMarkNotificationRead(notificationId)} type="button">
-                          Marcar como leída
+              <div className="shop-notifications-layout">
+                <div className="shop-notifications-toolbar">
+                  <span>{notifications.length} {notifications.length === 1 ? 'actualización' : 'actualizaciones'}</span>
+                  {unreadNotificationCount > 0 && (
+                    <button className="shop-notification-mark-all" disabled={busy} onClick={handleMarkAllNotificationsRead} type="button">
+                      <FiCheck aria-hidden="true" />Marcar todas como leídas
+                    </button>
+                  )}
+                </div>
+                <div className="shop-notifications-list">
+                  {notifications.map((notification) => {
+                    const notificationId = notification.NotificacionID ?? notification.notificacionid
+                    const isRead = [true, 1, '1', 'true'].includes(notification.Leida ?? notification.leida)
+                    const title = notification.Titulo ?? notification.titulo
+                    const messageText = notification.Mensaje ?? notification.mensaje
+                    const isSelected = (selectedNotification?.NotificacionID ?? selectedNotification?.notificacionid) === notificationId
+                    return (
+                      <article className={`shop-notification-card${isRead ? '' : ' is-unread'}${isSelected ? ' is-selected' : ''}`} key={notificationId}>
+                        <button
+                          className="shop-notification-main"
+                          disabled={busy}
+                          onClick={() => openNotification(notificationId)}
+                          type="button"
+                        >
+                          <span className="shop-notification-icon" aria-hidden="true"><FiBell /></span>
+                          <span className="shop-notification-copy">
+                            <strong>{title}</strong>
+                            <span>{messageText}</span>
+                          </span>
+                          {!isRead && <span className="shop-notification-dot" aria-label="No leída" />}
                         </button>
-                      )}
-                    </article>
-                  )
-                })}
+                        {!isRead && (
+                          <button
+                            className="shop-notification-read"
+                            disabled={busy}
+                            onClick={() => handleMarkNotificationRead(notificationId)}
+                            type="button"
+                            aria-label={`Marcar ${title} como leída`}
+                          >
+                            <FiCheck aria-hidden="true" />
+                          </button>
+                        )}
+                        {isSelected && (
+                          <div className="shop-notification-inline-detail">
+                            <span>{messageText}</span>
+                            <button type="button" onClick={() => setSelectedNotification(null)} aria-label="Cerrar detalle">
+                              <FiX />
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </section>
@@ -1315,6 +1418,7 @@ function App() {
                 <div className="admin-grid">
                   {adminOrders.map((order) => {
                     const payments = selectedPaymentIds[order.PedidoID] || []
+                    const isPaymentOpen = Boolean(openPaymentIds[order.PedidoID])
                     const shippingState = shippingStates[order.PedidoID]
                     const nextShippingLabel =
                       shippingState === 'Preparando' ? 'Marcar envío enviado'
@@ -1329,7 +1433,21 @@ function App() {
                         <p className="admin-order-buyer">Comprador: {order.Comprador}</p>
                         <strong className="admin-order-total">₡{Number(order.Total || 0).toLocaleString('es-CR')}</strong>
                         <div className="admin-order-actions">
-                          <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => loadOrderPayments(order.PedidoID)} type="button">Cargar pagos</button>
+                          <button
+                            aria-expanded={isPaymentOpen}
+                            className="admin-action-button admin-action-secondary"
+                            disabled={busy}
+                            onClick={() => {
+                              if (isPaymentOpen) {
+                                setOpenPaymentIds((current) => ({ ...current, [order.PedidoID]: false }))
+                              } else {
+                                loadOrderPayments(order.PedidoID)
+                              }
+                            }}
+                            type="button"
+                          >
+                            {isPaymentOpen ? 'Cerrar pago' : 'Revisar pago'}
+                          </button>
                           <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openOrderDetails(order.PedidoID)} type="button">Ver detalles</button>
                           {!['Cancelado', 'Entregado'].includes(order.Estado) && (
                             <button className="admin-action-button" disabled={busy} onClick={() => handleCancelOrder(order.PedidoID)} type="button">Cancelar pedido</button>
@@ -1338,19 +1456,19 @@ function App() {
                             <button className="admin-action-button" disabled={busy} onClick={() => handleUpdateShipping(order.PedidoID)} type="button">{nextShippingLabel}</button>
                           )}
                         </div>
-                        {payments.map((payment) => (
+                        {isPaymentOpen && payments.map((payment) => (
                           <div className="admin-payment" key={payment.PagoID}>
                             <p>Pago #{payment.PagoID}</p>
                             <span className="admin-payment-status">{payment.Estado}</span>
                             {payment.Estado === 'Pendiente' && (
                               <div className="admin-payment-actions">
                                 <button className="admin-action-button" disabled={busy} onClick={() => handleApprovePayment(order.PedidoID, payment.PagoID)} type="button">Aprobar</button>
-                                <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => handleRejectPayment(payment.PagoID)} type="button">Rechazar</button>
+                                <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => handleRejectPayment(order.PedidoID, payment.PagoID)} type="button">Rechazar</button>
                               </div>
                             )}
                           </div>
                         ))}
-                        {selectedPaymentIds[order.PedidoID] && payments.length === 0 && (
+                        {isPaymentOpen && selectedPaymentIds[order.PedidoID] && payments.length === 0 && (
                           <p>Este pedido no tiene pagos registrados.</p>
                         )}
                         {orderDetails[order.PedidoID] && (
@@ -1465,55 +1583,91 @@ function App() {
             )}
           </section>
         ) : view === 'seller' ? (
-          <section className="catalog-view" aria-labelledby="seller-title">
-            <h2 id="seller-title">Mi tienda</h2>
+          <section className="catalog-view shop-seller-page" aria-labelledby="seller-title">
+            <div className="shop-orders-heading shop-seller-heading">
+              <div>
+                <span className="shop-section-eyebrow">GESTIÓN COMERCIAL</span>
+                <h2 id="seller-title">Mi tienda</h2>
+              </div>
+              {seller && <span className="shop-orders-count">Vendedor activo</span>}
+            </div>
             {error && <p className="dialog-error" role="alert">{error}</p>}
             {message && <p className="dialog-notice" role="status">{message}</p>}
 
             {!seller ? (
-              <form className="checkout-address-form" onSubmit={handleCreateSeller}>
-                <h3>Crear perfil de vendedor</h3>
-                <label>Nombre comercial<input value={sellerForm.nombreComercial} onChange={(event) => setSellerForm({ ...sellerForm, nombreComercial: event.target.value })} required /></label>
-                <label>Descripción<input value={sellerForm.descripcion} onChange={(event) => setSellerForm({ ...sellerForm, descripcion: event.target.value })} /></label>
-                <button className="dialog-primary" disabled={busy} type="submit">
-                  {busy ? 'Guardando...' : 'Crear perfil'}
-                </button>
-              </form>
-            ) : (
-              <>
-                <h3>{seller.NombreComercial}</h3>
-                <p>{seller.Descripcion || 'Sin descripción'}</p>
-                <form className="checkout-address-form" onSubmit={handleUpdateSeller}>
-                  <h3>Editar perfil de tienda</h3>
-                  <label>Nombre comercial<input value={sellerEdit.nombreComercial} onChange={(event) => setSellerEdit({ ...sellerEdit, nombreComercial: event.target.value })} required /></label>
-                  <label>Descripción<input value={sellerEdit.descripcion} onChange={(event) => setSellerEdit({ ...sellerEdit, descripcion: event.target.value })} /></label>
-                  <button className="admin-action-button" disabled={busy} type="submit">Guardar perfil</button>
-                </form>
-
-                <form className="checkout-address-form" onSubmit={handlePublishProduct}>
-                  <h3>Publicar producto</h3>
-                  <label>Categoría
-                    <select value={productForm.categoriaID} onChange={(event) => setProductForm({ ...productForm, categoriaID: event.target.value })} required>
-                      <option value="">Selecciona una categoría</option>
-                      {categories.map((category) => (
-                        <option key={category.CategoriaID} value={category.CategoriaID}>{category.Nombre}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>Nombre<input value={productForm.nombre} onChange={(event) => setProductForm({ ...productForm, nombre: event.target.value })} required /></label>
-                  <label>Descripción<input value={productForm.descripcion} onChange={(event) => setProductForm({ ...productForm, descripcion: event.target.value })} /></label>
-                  <label>Precio<input type="number" min="1" value={productForm.precio} onChange={(event) => setProductForm({ ...productForm, precio: event.target.value })} required /></label>
-                  <label>Existencias<input type="number" min="1" value={productForm.cantidad} onChange={(event) => setProductForm({ ...productForm, cantidad: event.target.value })} required /></label>
-                  <label>Imagen<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setProductForm({ ...productForm, imagen: event.target.files?.[0] || null })} required /></label>
+              <div className="shop-seller-create">
+                <span className="shop-seller-create-icon" aria-hidden="true"><FiBriefcase /></span>
+                <div>
+                  <h3>Configura tu tienda</h3>
+                  <p>Crea tu perfil comercial para publicar productos y recibir pedidos.</p>
+                </div>
+                <form className="checkout-address-form" onSubmit={handleCreateSeller}>
+                  <label>Nombre comercial<input value={sellerForm.nombreComercial} onChange={(event) => setSellerForm({ ...sellerForm, nombreComercial: event.target.value })} required /></label>
+                  <label>Descripción<input value={sellerForm.descripcion} onChange={(event) => setSellerForm({ ...sellerForm, descripcion: event.target.value })} /></label>
                   <button className="dialog-primary" disabled={busy} type="submit">
-                    {busy ? 'Publicando...' : 'Publicar producto'}
+                    {busy ? 'Guardando...' : 'Crear perfil'}
                   </button>
                 </form>
+              </div>
+            ) : (
+              <>
+                <div className="shop-seller-hero">
+                  <span className="shop-seller-avatar" aria-hidden="true"><FiBriefcase /></span>
+                  <div>
+                    <h3>{seller.NombreComercial}</h3>
+                    <p>{seller.Descripcion || 'Sin descripción comercial'}</p>
+                  </div>
+                </div>
 
-                <h3>Mis productos</h3>
+                <div className="shop-seller-stats">
+                  <article><FiBox aria-hidden="true" /><div><span>Productos</span><strong>{sellerProducts.length}</strong></div></article>
+                  <article><FiPackage aria-hidden="true" /><div><span>Pedidos</span><strong>{sellerOrders.length}</strong></div></article>
+                  <article><FiDollarSign aria-hidden="true" /><div><span>Ingresos</span><strong>₡{sellerOrders.reduce((total, order) => total + Number(order.SubtotalVendedor || 0), 0).toLocaleString('es-CR')}</strong></div></article>
+                </div>
+
+                <div className="shop-seller-tools">
+                  <section className="shop-seller-card">
+                    <h3>Editar perfil de tienda</h3>
+                    <form className="checkout-address-form" onSubmit={handleUpdateSeller}>
+                      <label>Nombre comercial<input value={sellerEdit.nombreComercial} onChange={(event) => setSellerEdit({ ...sellerEdit, nombreComercial: event.target.value })} required /></label>
+                      <label>Descripción<input value={sellerEdit.descripcion} onChange={(event) => setSellerEdit({ ...sellerEdit, descripcion: event.target.value })} /></label>
+                      <button className="admin-action-button" disabled={busy} type="submit"><FiSave />Guardar perfil</button>
+                    </form>
+                  </section>
+
+                  <section className="shop-seller-card">
+                    <h3>Publicar producto</h3>
+                    <form className="checkout-address-form" onSubmit={handlePublishProduct}>
+                      <label>Categoría
+                        <select value={productForm.categoriaID} onChange={(event) => setProductForm({ ...productForm, categoriaID: event.target.value })} required>
+                          <option value="">Selecciona una categoría</option>
+                          {categories.map((category) => (
+                            <option key={category.CategoriaID} value={category.CategoriaID}>{category.Nombre}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>Nombre<input value={productForm.nombre} onChange={(event) => setProductForm({ ...productForm, nombre: event.target.value })} required /></label>
+                      <label>Descripción<input value={productForm.descripcion} onChange={(event) => setProductForm({ ...productForm, descripcion: event.target.value })} /></label>
+                      <label>Precio<input type="number" min="1" value={productForm.precio} onChange={(event) => setProductForm({ ...productForm, precio: event.target.value })} required /></label>
+                      <label>Existencias<input type="number" min="1" value={productForm.cantidad} onChange={(event) => setProductForm({ ...productForm, cantidad: event.target.value })} required /></label>
+                      <label>Imagen<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setProductForm({ ...productForm, imagen: event.target.files?.[0] || null })} required /></label>
+                      <button className="dialog-primary" disabled={busy} type="submit">
+                        {busy ? 'Publicando...' : 'Publicar producto'}
+                      </button>
+                    </form>
+                  </section>
+                </div>
+
+                <div className="shop-seller-section-heading">
+                  <div><span className="shop-section-eyebrow">INVENTARIO</span><h3>Mis productos</h3></div>
+                  <span className="shop-orders-count">{sellerProducts.length} publicados</span>
+                </div>
                 {editingProduct && (
-                  <form className="checkout-address-form" onSubmit={handleUpdateProduct}>
-                    <h3>Editar {editingProduct.Nombre}</h3>
+                  <form className="checkout-address-form shop-seller-edit" onSubmit={handleUpdateProduct}>
+                    <div className="shop-seller-edit-heading">
+                      <h3>Editar {editingProduct.Nombre}</h3>
+                      <button type="button" onClick={() => setEditingProduct(null)} aria-label="Cerrar edición"><FiX /></button>
+                    </div>
                     <label>Categoría
                       <select value={editingProduct.CategoriaID} onChange={(event) => setEditingProduct({ ...editingProduct, CategoriaID: event.target.value })} required>
                         {categories.map((category) => (
@@ -1530,7 +1684,13 @@ function App() {
                       <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={handleAddStock} type="button">Agregar existencias</button>
                     </div>
                     <div>
-                      <label>URL de imagen<input type="url" value={newImageURL} onChange={(event) => setNewImageURL(event.target.value)} /></label>
+                      <label>Agregar imagen
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) => setNewProductImage(event.target.files?.[0] || null)}
+                        />
+                      </label>
                       <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={handleAddProductImage} type="button">Agregar imagen</button>
                     </div>
                     {productImages.map((image) => (
@@ -1546,217 +1706,358 @@ function App() {
                 {sellerProducts.length === 0 ? (
                   <p>Aún no tienes productos.</p>
                 ) : (
-                  <div className="catalog-grid">
+                  <div className="shop-seller-products">
                     {sellerProducts.map((product) => (
-                      <article className="catalog-card" key={product.ProductoID}>
-                        {product.ImagenURL && <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />}
-                        <h3>{product.Nombre}</h3>
-                        <strong>₡{Number(product.Precio || 0).toLocaleString('es-CR')}</strong>
-                        <span>Existencias: {Number(product.CantidadDisponible || 0)}</span>
-                        <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openProductImages(product)} type="button">
-                          Editar
-                        </button>
-                        <button className="dialog-primary" disabled={busy} onClick={() => handleDeactivateProduct(product.ProductoID)} type="button">
-                          Desactivar
-                        </button>
+                      <article className="shop-seller-product-card" key={product.ProductoID}>
+                        <div className="shop-seller-product-image">
+                          {product.ImagenURL
+                            ? <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />
+                            : <FiBox aria-hidden="true" />}
+                          <span>{Number(product.CantidadDisponible || 0)} disponibles</span>
+                        </div>
+                        <div className="shop-seller-product-copy">
+                          <h3>{product.Nombre}</h3>
+                          <strong>₡{Number(product.Precio || 0).toLocaleString('es-CR')}</strong>
+                        </div>
+                        <div className="shop-seller-product-actions">
+                          <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openProductImages(product)} type="button">
+                            <FiEdit3 />Editar
+                          </button>
+                          <button className="shop-seller-deactivate" disabled={busy} onClick={() => handleDeactivateProduct(product.ProductoID)} type="button">
+                            Desactivar
+                          </button>
+                        </div>
                       </article>
                     ))}
                   </div>
                 )}
 
-                <h3>Pedidos recibidos</h3>
+                <div className="shop-seller-section-heading shop-seller-orders-heading">
+                  <div><span className="shop-section-eyebrow">VENTAS</span><h3>Pedidos recibidos</h3></div>
+                  <span className="shop-orders-count">{sellerOrders.length} pedidos</span>
+                </div>
                 {sellerOrders.length === 0 ? (
                   <p>Aún no tienes pedidos recibidos.</p>
                 ) : (
-                  <div className="catalog-grid">
-                    {sellerOrders.map((order) => (
-                      <article className="catalog-card" key={order.PedidoID}>
-                        <h3>Pedido #{order.PedidoID}</h3>
-                        <p>Comprador: {order.Comprador}</p>
-                        <p>Estado: {order.Estado}</p>
-                        <strong>Ingreso: ₡{Number(order.SubtotalVendedor || 0).toLocaleString('es-CR')}</strong>
-                        <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openOrderDetails(order.PedidoID)} type="button">
-                          Ver detalles
-                        </button>
-                        {orderDetails[order.PedidoID] && (
-                          <div className="admin-payment">
-                            {orderDetails[order.PedidoID].details.map((detail, index) => {
-                              const product = orderDetails[order.PedidoID].products[index]
-                              return (
-                                <p key={detail.DetallePedidoID}>
-                                  {product?.Nombre || `Producto #${detail.ProductoID}`} · {detail.Cantidad} unidades
-                                </p>
-                              )
-                            })}
+                  <div className="shop-seller-orders">
+                    {sellerOrders.map((order) => {
+                      const isOpen = Boolean(openSellerOrderIds[order.PedidoID])
+                      const details = orderDetails[order.PedidoID]
+                      return (
+                        <article className="shop-seller-order" key={order.PedidoID}>
+                          <header>
+                            <div><span>Pedido</span><h3>#{order.PedidoID}</h3></div>
+                            <span className={`shop-order-status status-${String(order.Estado || '').toLowerCase().replace(/\s+/g, '-')}`}>{order.Estado}</span>
+                          </header>
+                          <div className="shop-seller-order-body">
+                            <p><FiUser aria-hidden="true" /><span>{order.Comprador}</span></p>
+                            <strong>₡{Number(order.SubtotalVendedor || 0).toLocaleString('es-CR')}</strong>
+                            <button
+                              className="admin-action-button admin-action-secondary"
+                              disabled={busy}
+                              aria-expanded={isOpen}
+                              onClick={() => {
+                                if (isOpen) {
+                                  setOpenSellerOrderIds((current) => ({ ...current, [order.PedidoID]: false }))
+                                } else if (details) {
+                                  setOpenSellerOrderIds((current) => ({ ...current, [order.PedidoID]: true }))
+                                } else {
+                                  setOpenSellerOrderIds((current) => ({ ...current, [order.PedidoID]: true }))
+                                  openOrderDetails(order.PedidoID)
+                                }
+                              }}
+                              type="button"
+                            >
+                              <FiEye />{isOpen ? 'Ocultar detalles' : 'Ver detalles'}
+                            </button>
+                            {isOpen && details && (
+                              <div className="shop-seller-order-details">
+                                {details.details.map((detail, index) => {
+                                  const product = details.products[index]
+                                  return (
+                                    <p key={detail.DetallePedidoID}>
+                                      <span>{product?.Nombre || `Producto #${detail.ProductoID}`}</span>
+                                      <strong>{detail.Cantidad} unidades</strong>
+                                    </p>
+                                  )
+                                })}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </article>
-                    ))}
+                        </article>
+                      )
+                    })}
                   </div>
                 )}
               </>
             )}
           </section>
         ) : view === 'checkout' ? (
-          <section className="catalog-view" aria-labelledby="checkout-title">
-            <h2 id="checkout-title">Checkout</h2>
+          <section className="catalog-view shop-checkout-page" aria-labelledby="checkout-title">
+            <div className="shop-orders-heading shop-checkout-heading">
+              <div>
+                <span className="shop-section-eyebrow">FINALIZA TU COMPRA</span>
+                <h2 id="checkout-title">Checkout</h2>
+              </div>
+              <span className="shop-orders-count">{cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'}</span>
+            </div>
             {error && <p className="dialog-error" role="alert">{error}</p>}
             {message && <p className="dialog-notice" role="status">{message}</p>}
 
-            {checkoutStep === 'form' && (addresses.length === 0 ? (
-              <form className="checkout-address-form" onSubmit={handleCreateAddress}>
-                <h3>Agrega una dirección</h3>
-                <label>Provincia<input value={newAddress.provincia} onChange={(event) => setNewAddress({ ...newAddress, provincia: event.target.value })} required /></label>
-                <label>Cantón<input value={newAddress.canton} onChange={(event) => setNewAddress({ ...newAddress, canton: event.target.value })} required /></label>
-                <label>Distrito<input value={newAddress.distrito} onChange={(event) => setNewAddress({ ...newAddress, distrito: event.target.value })} required /></label>
-                <label>Señas<input value={newAddress.detalle} onChange={(event) => setNewAddress({ ...newAddress, detalle: event.target.value })} required /></label>
-                <button className="dialog-primary" disabled={busy} type="submit">
-                  {busy ? 'Guardando...' : 'Guardar dirección'}
-                </button>
-              </form>
-            ) : (
-              <label>
-                Dirección
-                <select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>
-                  <option value="">Selecciona una dirección</option>
-                  {addresses.map((address) => (
-                    <option key={address.DireccionID} value={address.DireccionID}>
-                      {address.Detalle}, {address.Distrito}, {address.Canton}, {address.Provincia}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-
-            {checkoutStep === 'form' && <label>
-              Tipo de envío
-              <select value={selectedShippingTypeId} onChange={(event) => setSelectedShippingTypeId(event.target.value)}>
-                <option value="">Selecciona un tipo de envío</option>
-                {shippingTypes.map((type) => (
-                  <option key={type.TipoEnvioID} value={type.TipoEnvioID}>
-                    {type.Nombre} · ₡{Number(type.Costo || 0).toLocaleString('es-CR')}
-                  </option>
+            <div className="shop-checkout-layout">
+              <div className="shop-checkout-form">
+                {checkoutStep === 'form' && (addresses.length === 0 ? (
+                  <form className="checkout-address-form" onSubmit={handleCreateAddress}>
+                    <h3>Agrega una dirección</h3>
+                    <label>Provincia<input value={newAddress.provincia} onChange={(event) => setNewAddress({ ...newAddress, provincia: event.target.value })} required /></label>
+                    <label>Cantón<input value={newAddress.canton} onChange={(event) => setNewAddress({ ...newAddress, canton: event.target.value })} required /></label>
+                    <label>Distrito<input value={newAddress.distrito} onChange={(event) => setNewAddress({ ...newAddress, distrito: event.target.value })} required /></label>
+                    <label>Señas<input value={newAddress.detalle} onChange={(event) => setNewAddress({ ...newAddress, detalle: event.target.value })} required /></label>
+                    <button className="dialog-primary" disabled={busy} type="submit">
+                      {busy ? 'Guardando...' : 'Guardar dirección'}
+                    </button>
+                  </form>
+                ) : (
+                  <label>
+                    Dirección
+                    <select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>
+                      <option value="">Selecciona una dirección</option>
+                      {addresses.map((address) => (
+                        <option key={address.DireccionID} value={address.DireccionID}>
+                          {address.Detalle}, {address.Distrito}, {address.Canton}, {address.Provincia}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ))}
-              </select>
-            </label>}
 
-            {checkoutStep === 'form' && <label>
-              Método de pago
-              <select value={selectedPaymentMethodId} onChange={(event) => setSelectedPaymentMethodId(event.target.value)}>
-                <option value="">Selecciona un método de pago</option>
-                {paymentMethods.map((method) => (
-                  <option key={method.MetodoPagoID} value={method.MetodoPagoID}>
-                    {method.Nombre}
-                  </option>
-                ))}
-              </select>
-            </label>}
+                {checkoutStep === 'form' && (
+                  <>
+                    <label>
+                      Tipo de envío
+                      <select value={selectedShippingTypeId} onChange={(event) => setSelectedShippingTypeId(event.target.value)}>
+                        <option value="">Selecciona un tipo de envío</option>
+                        {shippingTypes.map((type) => (
+                          <option key={type.TipoEnvioID} value={type.TipoEnvioID}>
+                            {type.Nombre} · ₡{Number(type.Costo || 0).toLocaleString('es-CR')}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Método de pago
+                      <select value={selectedPaymentMethodId} onChange={(event) => setSelectedPaymentMethodId(event.target.value)}>
+                        <option value="">Selecciona un método de pago</option>
+                        {paymentMethods.map((method) => (
+                          <option key={method.MetodoPagoID} value={method.MetodoPagoID}>
+                            {method.Nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
 
-            {checkoutStep === 'form' ? (
-              <button
-              className="dialog-primary"
-              disabled={busy || !selectedAddressId || !selectedShippingTypeId || !selectedPaymentMethodId}
-              onClick={() => setCheckoutStep('review')}
-              type="button"
-            >
-              Revisar pedido
-              </button>
-            ) : (
-              <div className="checkout-review">
-                <h3>Resumen del pedido</h3>
-                <div className="catalog-grid">
-                  {cartItems.map((item) => (
-                    <article className="catalog-card" key={item.ProductoID ?? item.productoid}>
-                      <h4>{item.Producto ?? item.producto}</h4>
-                      <p>Cantidad: {item.Cantidad ?? item.cantidad}</p>
-                      <strong>₡{Number((item.Subtotal ?? item.subtotal) || 0).toLocaleString('es-CR')}</strong>
-                    </article>
-                  ))}
-                </div>
-                {selectedAddress && (
-                  <p><strong>Entrega:</strong> {selectedAddress.Detalle}, {selectedAddress.Distrito}, {selectedAddress.Canton}, {selectedAddress.Provincia}</p>
+                {checkoutStep === 'form' ? (
+                  <button
+                    className="dialog-primary"
+                    disabled={busy || !selectedAddressId || !selectedShippingTypeId || !selectedPaymentMethodId}
+                    onClick={() => setCheckoutStep('review')}
+                    type="button"
+                  >
+                    Revisar pedido
+                  </button>
+                ) : (
+                  <div className="checkout-review">
+                    <h3>Confirma los datos</h3>
+                    {selectedAddress && <p><FiMapPin aria-hidden="true" /><span><strong>Entrega</strong>{selectedAddress.Detalle}, {selectedAddress.Distrito}, {selectedAddress.Canton}, {selectedAddress.Provincia}</span></p>}
+                    {selectedShipping && <p><FiPackage aria-hidden="true" /><span><strong>Envío</strong>{selectedShipping.Nombre} · ₡{checkoutShippingCost.toLocaleString('es-CR')}</span></p>}
+                    {selectedPaymentMethod && <p><FiCheck aria-hidden="true" /><span><strong>Pago</strong>{selectedPaymentMethod.Nombre}</span></p>}
+                    <div className="checkout-review-actions">
+                      <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => setCheckoutStep('form')} type="button">Editar datos</button>
+                      <button className="dialog-primary" disabled={busy} onClick={handleCreateOrder} type="button">
+                        {busy ? 'Creando pedido...' : 'Confirmar pedido'}
+                      </button>
+                    </div>
+                  </div>
                 )}
-                {selectedShipping && (
-                  <p><strong>Envío:</strong> {selectedShipping.Nombre} · ₡{checkoutShippingCost.toLocaleString('es-CR')}</p>
-                )}
-                {selectedPaymentMethod && (
-                  <p><strong>Método de pago:</strong> {selectedPaymentMethod.Nombre}</p>
-                )}
-                <p><strong>Subtotal:</strong> ₡{checkoutSubtotal.toLocaleString('es-CR')}</p>
-                <p><strong>Total:</strong> ₡{(checkoutSubtotal + checkoutShippingCost).toLocaleString('es-CR')}</p>
-                <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => setCheckoutStep('form')} type="button">Editar datos</button>
-                <button
-                  className="dialog-primary"
-                  disabled={busy}
-                  onClick={handleCreateOrder}
-                  type="button"
-                >
-                  {busy ? 'Creando pedido...' : 'Confirmar pedido'}
-                </button>
               </div>
-            )}
+
+              <aside className="shop-checkout-summary">
+                <div className="shop-checkout-summary-heading">
+                  <h3>Resumen del pedido</h3>
+                  <span>{cartItems.length} {cartItems.length === 1 ? 'artículo' : 'artículos'}</span>
+                </div>
+                <div className="shop-checkout-products">
+                  {cartItems.map((item) => {
+                    const productoID = item.ProductoID ?? item.productoid
+                    const nombre = item.Producto ?? item.producto ?? `Producto ${productoID}`
+                    const cantidad = Number(item.Cantidad ?? item.cantidad ?? 1)
+                    const subtotal = Number(item.Subtotal ?? item.subtotal ?? 0)
+                    return (
+                      <article key={productoID}>
+                        <span className="shop-checkout-product-icon" aria-hidden="true"><FiShoppingBag /></span>
+                        <div>
+                          <strong>{nombre}</strong>
+                          <span>Cantidad: {cantidad}</span>
+                        </div>
+                        <b>₡{subtotal.toLocaleString('es-CR')}</b>
+                      </article>
+                    )
+                  })}
+                </div>
+                <div className="shop-checkout-totals">
+                  <p><span>Subtotal</span><strong>₡{checkoutSubtotal.toLocaleString('es-CR')}</strong></p>
+                  <p><span>Envío</span><strong>{checkoutShippingCost > 0 ? `₡${checkoutShippingCost.toLocaleString('es-CR')}` : 'Por calcular'}</strong></p>
+                  <p className="shop-checkout-grand-total"><span>Total</span><strong>₡{(checkoutSubtotal + checkoutShippingCost).toLocaleString('es-CR')}</strong></p>
+                </div>
+              </aside>
+            </div>
           </section>
         ) : view === 'orders' ? (
-          <section className="catalog-view" aria-labelledby="orders-title">
-            <h2 id="orders-title">Mis pedidos</h2>
+          <section className="catalog-view shop-orders-page" aria-labelledby="orders-title">
+            <div className="shop-orders-heading">
+              <div>
+                <span className="shop-section-eyebrow">HISTORIAL DE COMPRAS</span>
+                <h2 id="orders-title">Mis pedidos</h2>
+              </div>
+              {orders.length > 0 && (
+                <span className="shop-orders-count">{orders.length} {orders.length === 1 ? 'pedido' : 'pedidos'}</span>
+              )}
+            </div>
             {error && <p className="dialog-error" role="alert">{error}</p>}
-            {busy ? (
-              <p>Cargando pedidos...</p>
-            ) : orders.length === 0 ? (
-              <p>Aún no tienes pedidos.</p>
-            ) : (
-              <div className="catalog-grid">
-                {orders.map((order) => (
-                  <article className="catalog-card" key={order.PedidoID}>
-                    <h3>Pedido #{order.PedidoID}</h3>
-                    <p>Estado: {order.Estado || 'Pendiente'}</p>
-                    <strong>₡{Number(order.Total || 0).toLocaleString('es-CR')}</strong>
-                    <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openOrderDetails(order.PedidoID)} type="button">
-                      Ver detalles
-                    </button>
-                    {(user?.rol === 'Comprador' || user?.rol === 'Administrador') &&
-                      !['Cancelado', 'Entregado'].includes(order.Estado) && (
-                        <button className="admin-action-button" disabled={busy} onClick={() => handleCancelOrder(order.PedidoID)} type="button">
-                          Cancelar pedido
-                        </button>
-                      )}
-                    {orderDetails[order.PedidoID] && (
-                      <div className="admin-payment">
-                        {orderDetails[order.PedidoID].address ? (
-                          <p>
-                            Entrega: {orderDetails[order.PedidoID].address.Detalle}, {orderDetails[order.PedidoID].address.Distrito}, {orderDetails[order.PedidoID].address.Canton}, {orderDetails[order.PedidoID].address.Provincia}
-                          </p>
-                        ) : (
-                          <p>Dirección: no disponible</p>
-                        )}
-                        <p>Pago: {orderDetails[order.PedidoID].payments[0]?.Estado || 'Sin pago'}</p>
-                        <p>Envío: {orderDetails[order.PedidoID].shipping?.Estado || 'Sin envío'}</p>
-                        {orderDetails[order.PedidoID].details.map((detail, index) => {
-                          const product = orderDetails[order.PedidoID].products[index]
-                          return (
-                            <p key={detail.DetallePedidoID}>
-                              {product?.Nombre || `Producto #${detail.ProductoID}`} · {detail.Cantidad} × ₡{Number(detail.PrecioUnitario).toLocaleString('es-CR')}
-                            </p>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </article>
+            {ordersLoading ? (
+              <div className="shop-orders-grid" aria-label="Cargando pedidos">
+                {[1, 2, 3].map((item) => (
+                  <div className="shop-order-card shop-order-skeleton" key={item}>
+                    <div className="shop-order-skeleton-line is-wide" />
+                    <div className="shop-order-skeleton-line" />
+                    <div className="shop-order-skeleton-line is-short" />
+                  </div>
                 ))}
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="shop-empty-state shop-orders-empty">
+                <span aria-hidden="true"><FiPackage /></span>
+                <h3>Aún no tienes pedidos</h3>
+                <p>Cuando realices una compra, aparecerá aquí el seguimiento completo.</p>
+                <button className="dialog-primary" onClick={openFullCatalog} type="button">Explorar catálogo</button>
+              </div>
+            ) : (
+              <div className="shop-orders-grid">
+                {orders.map((order) => {
+                  const orderStatus = order.Estado || 'Pendiente'
+                  const statusClass = String(orderStatus).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')
+                  const details = orderDetails[order.PedidoID]
+                  const isDetailsOpen = Boolean(openOrderDetailsIds[order.PedidoID])
+                  return (
+                    <article className="shop-order-card" key={order.PedidoID}>
+                      <header className="shop-order-card-header">
+                        <div>
+                          <span>Pedido</span>
+                          <h3>#{order.PedidoID}</h3>
+                        </div>
+                        <span className={`shop-order-status status-${statusClass}`}>{orderStatus}</span>
+                      </header>
+                      <div className="shop-order-card-body">
+                        <div className="shop-order-total">
+                          <span>Total pagado</span>
+                          <strong>₡{Number(order.Total || 0).toLocaleString('es-CR')}</strong>
+                        </div>
+                        {isDetailsOpen && details && (
+                          <div className="shop-order-meta">
+                            <div>
+                              <FiMapPin aria-hidden="true" />
+                              <span>{details.address ? `${details.address.Distrito}, ${details.address.Canton}` : 'Dirección no disponible'}</span>
+                            </div>
+                            <div>
+                              <FiPackage aria-hidden="true" />
+                              <span>Envío: {details.shipping?.Estado || 'Sin envío'}</span>
+                            </div>
+                            <div>
+                              <FiCheck aria-hidden="true" />
+                              <span>Pago: {details.payments[0]?.Estado || 'Sin pago'}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="shop-order-actions">
+                          <button
+                            aria-expanded={isDetailsOpen}
+                            className="admin-action-button admin-action-secondary"
+                            disabled={busy}
+                            onClick={() => {
+                              if (isDetailsOpen) {
+                                setOpenOrderDetailsIds((current) => ({ ...current, [order.PedidoID]: false }))
+                              } else if (details) {
+                                setOpenOrderDetailsIds((current) => ({ ...current, [order.PedidoID]: true }))
+                              } else {
+                                setOpenOrderDetailsIds((current) => ({ ...current, [order.PedidoID]: true }))
+                                openOrderDetails(order.PedidoID)
+                              }
+                            }}
+                            type="button"
+                          >
+                            {isDetailsOpen ? 'Ocultar detalles' : 'Ver detalles'}
+                            <FiArrowRight aria-hidden="true" />
+                          </button>
+                          {(user?.rol === 'Comprador' || user?.rol === 'Administrador') &&
+                            !['Cancelado', 'Entregado'].includes(order.Estado) && (
+                              <button className="shop-order-cancel" disabled={busy} onClick={() => handleCancelOrder(order.PedidoID)} type="button">
+                                <FiX aria-hidden="true" />Cancelar
+                              </button>
+                            )}
+                        </div>
+                        {isDetailsOpen && details && (
+                          <div className="shop-order-details">
+                            {details.address && (
+                              <p><strong>Entrega:</strong> {details.address.Detalle}, {details.address.Distrito}, {details.address.Canton}, {details.address.Provincia}</p>
+                            )}
+                            {details.details.map((detail, index) => {
+                              const product = details.products[index]
+                              return (
+                                <p key={detail.DetallePedidoID}>
+                                  <span>{product?.Nombre || `Producto #${detail.ProductoID}`}</span>
+                                  <strong>{detail.Cantidad} × ₡{Number(detail.PrecioUnitario).toLocaleString('es-CR')}</strong>
+                                </p>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                  </article>
+                  )
+                })}
               </div>
             )}
           </section>
         ) : view === 'cart' ? (
-          <section className="catalog-view" aria-labelledby="cart-title">
-            <h2 id="cart-title">Carrito</h2>
+          <section className="catalog-view shop-cart-page" aria-labelledby="cart-title">
+            <div className="shop-orders-heading shop-cart-heading">
+              <div>
+                <span className="shop-section-eyebrow">TU COMPRA</span>
+                <h2 id="cart-title">Carrito</h2>
+              </div>
+              {cartItems.length > 0 && (
+                <span className="shop-orders-count">{cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'}</span>
+              )}
+            </div>
             {error && <p className="dialog-error" role="alert">{error}</p>}
             {cartLoading ? (
-              <p>Cargando carrito...</p>
+              <div className="shop-cart-layout" aria-label="Cargando carrito">
+                <div className="shop-cart-lines">
+                  {[1, 2].map((item) => <div className="shop-cart-skeleton" key={item} />)}
+                </div>
+              </div>
             ) : cartItems.length === 0 ? (
-              <p>Tu carrito está vacío.</p>
+              <div className="shop-empty-state shop-orders-empty">
+                <span aria-hidden="true"><FiShoppingCart /></span>
+                <h3>Tu carrito está vacío</h3>
+                <p>Añade productos a tu carrito y vuelve aquí para completar tu compra.</p>
+                <button className="dialog-primary" onClick={openFullCatalog} type="button">Explorar catálogo</button>
+              </div>
             ) : (
-              <>
-                <div className="catalog-grid">
+              <div className="shop-cart-layout">
+                <div className="shop-cart-lines">
                   {cartItems.map((item) => {
                     const productoID = item.ProductoID ?? item.productoid
                     const nombre = item.Producto ?? item.producto ?? `Producto ${productoID}`
@@ -1765,51 +2066,64 @@ function App() {
                     const subtotal = Number(item.Subtotal ?? item.subtotal ?? precio * cantidad)
                     const stock = Number(item.CantidadDisponible ?? item.cantidaddisponible ?? 0)
                     return (
-                      <article className="catalog-card" key={productoID}>
-                        <h3>{nombre}</h3>
-                        <strong>₡{subtotal.toLocaleString('es-CR')}</strong>
-                        <span>Existencias: {stock}</span>
-                        <div>
+                      <article className="shop-cart-line" key={productoID}>
+                        <div className="shop-cart-thumb" aria-hidden="true">
+                          <FiShoppingBag />
+                        </div>
+                        <div className="shop-cart-product">
+                          <h3>{nombre}</h3>
+                          <span>₡{precio.toLocaleString('es-CR')} por unidad</span>
+                          <small>{stock} disponibles</small>
+                        </div>
+                        <div className="shop-cart-quantity" aria-label={`Cantidad de ${nombre}`}>
                           <button
-                            className="dialog-primary"
                             disabled={busy || cantidad <= 1}
                             onClick={() => handleUpdateCart(productoID, cantidad - 1)}
                             type="button"
-                          >-</button>
-                          <span> {cantidad} </span>
+                            aria-label="Reducir cantidad"
+                          ><FiMinus /></button>
+                          <strong>{cantidad}</strong>
                           <button
-                            className="dialog-primary"
                             disabled={busy || cantidad >= stock}
                             onClick={() => handleUpdateCart(productoID, cantidad + 1)}
                             type="button"
-                          >+</button>
+                            aria-label="Aumentar cantidad"
+                          ><FiPlus /></button>
                         </div>
-                        <button
-                          className="dialog-primary"
-                          disabled={busy}
-                          onClick={() => handleRemoveCartItem(productoID)}
-                          type="button"
-                        >Eliminar</button>
+                        <strong className="shop-cart-subtotal">₡{subtotal.toLocaleString('es-CR')}</strong>
+                        <button className="shop-cart-remove" aria-label={`Eliminar ${nombre}`} disabled={busy} onClick={() => handleRemoveCartItem(productoID)} type="button">
+                          <FiTrash2 />
+                        </button>
                       </article>
                     )
                   })}
                 </div>
-                <p>
-                  <strong>
-                    Total: ₡{cartItems.reduce((total, item) => {
+                <aside className="shop-cart-summary">
+                  <h3>Resumen</h3>
+                  <div>
+                    <span>Subtotal</span>
+                    <strong>₡{cartItems.reduce((total, item) => {
                       const precio = Number(item.Precio ?? item.precio ?? 0)
                       const cantidad = Number(item.Cantidad ?? item.cantidad ?? 0)
                       return total + Number(item.Subtotal ?? item.subtotal ?? precio * cantidad)
-                    }, 0).toLocaleString('es-CR')}
-                  </strong>
-                </p>
-                <button className="dialog-primary" disabled={busy} onClick={handleClearCart} type="button">
-                  Vaciar carrito
-                </button>
-                <button className="dialog-primary" disabled={busy} onClick={openCheckout} type="button">
-                  Continuar con la compra
-                </button>
-              </>
+                    }, 0).toLocaleString('es-CR')}</strong>
+                  </div>
+                  <div className="shop-cart-total">
+                    <span>Total</span>
+                    <strong>₡{cartItems.reduce((total, item) => {
+                      const precio = Number(item.Precio ?? item.precio ?? 0)
+                      const cantidad = Number(item.Cantidad ?? item.cantidad ?? 0)
+                      return total + Number(item.Subtotal ?? item.subtotal ?? precio * cantidad)
+                    }, 0).toLocaleString('es-CR')}</strong>
+                  </div>
+                  <button className="dialog-primary" disabled={busy} onClick={openCheckout} type="button">
+                    Continuar con la compra <FiArrowRight />
+                  </button>
+                  <button className="shop-cart-clear" disabled={busy} onClick={handleClearCart} type="button">
+                    <FiTrash2 />Vaciar carrito
+                  </button>
+                </aside>
+              </div>
             )}
           </section>
         ) : view === 'home' ? (
@@ -1878,6 +2192,10 @@ function App() {
                 <div className="shop-category-grid">
                   {shopCategories.map((category, index) => {
                     const id = String(category.CategoriaID)
+                    const CategoryIcon = getCategoryIcon(category.Nombre)
+                    const productCount = products.filter((product) =>
+                      String(product.CategoriaID ?? product.categoriaid) === id
+                    ).length
                     return (
                       <button
                         aria-pressed={categoryId === id}
@@ -1886,11 +2204,14 @@ function App() {
                         onClick={() => browseCategory(id)}
                         type="button"
                       >
-                        <span aria-hidden="true">{category.Nombre?.charAt(0)?.toUpperCase() || '•'}</span>
-                        <strong>{category.Nombre}</strong>
-                        <svg aria-hidden="true" viewBox="0 0 20 20">
-                          <path d="M4 10h12m-5-5 5 5-5 5" />
-                        </svg>
+                        <span aria-hidden="true" className="shop-category-icon">
+                          <CategoryIcon />
+                        </span>
+                        <div className="shop-category-copy">
+                          <strong>{category.Nombre}</strong>
+                          <small>{productCount} {productCount === 1 ? 'producto' : 'productos'}</small>
+                        </div>
+                        <FiArrowRight aria-hidden="true" className="shop-category-arrow" />
                       </button>
                     )
                   })}
@@ -2036,6 +2357,7 @@ function App() {
             <div>
               <span className="eyebrow">CLICKMARKET</span>
               <h2 id="auth-title">{user ? 'Tu cuenta' : mode === 'login' ? 'Te damos la bienvenida' : 'Crea tu cuenta'}</h2>
+              {user && <p className="account-heading-copy">Gestiona tus datos y tus opciones de entrega desde un solo lugar.</p>}
             </div>
           </div>
 
@@ -2053,16 +2375,16 @@ function App() {
                 </div>
               </div>
               <form className="auth-form" onSubmit={handleUpdateProfile}>
-                <h3>Información personal</h3>
-                <label>Nombre<input value={profileEdit.nombre} onChange={(event) => setProfileEdit({ ...profileEdit, nombre: event.target.value })} required /></label>
-                <label>Apellido<input value={profileEdit.apellido} onChange={(event) => setProfileEdit({ ...profileEdit, apellido: event.target.value })} required /></label>
-                <label>Correo<input type="email" value={profileEdit.correo} onChange={(event) => setProfileEdit({ ...profileEdit, correo: event.target.value })} required /></label>
-                <button className="dialog-primary" disabled={busy} type="submit">Guardar perfil</button>
+                <h3><FiUser aria-hidden="true" />Información personal</h3>
+                <label><span>Nombre</span><input value={profileEdit.nombre} onChange={(event) => setProfileEdit({ ...profileEdit, nombre: event.target.value })} required /></label>
+                <label><span>Apellido</span><input value={profileEdit.apellido} onChange={(event) => setProfileEdit({ ...profileEdit, apellido: event.target.value })} required /></label>
+                <label><span>Correo <FiMail aria-hidden="true" /></span><input type="email" value={profileEdit.correo} onChange={(event) => setProfileEdit({ ...profileEdit, correo: event.target.value })} required /></label>
+                <button className="dialog-primary" disabled={busy} type="submit"><FiSave aria-hidden="true" />Guardar perfil</button>
               </form>
               <section className="account-addresses" aria-labelledby="account-addresses-title">
                 <div className="account-address-heading">
                   <div>
-                    <h3 id="account-addresses-title">Mis direcciones</h3>
+                    <h3 id="account-addresses-title"><FiMapPin aria-hidden="true" />Mis direcciones</h3>
                     <p>Administra dónde quieres recibir tus compras.</p>
                   </div>
                   <button
@@ -2072,7 +2394,7 @@ function App() {
                     type="button"
                     onClick={() => setAddingAddress((current) => !current)}
                   >
-                    {addingAddress ? 'Cancelar' : 'Agregar dirección'}
+                    {addingAddress ? <><FiX aria-hidden="true" />Cancelar</> : <><FiPlus aria-hidden="true" />Agregar dirección</>}
                   </button>
                 </div>
                 {addingAddress && (
@@ -2082,7 +2404,7 @@ function App() {
                     id="add-address-form"
                     onSubmit={handleCreateAddress}
                   >
-                    <h3>Nueva dirección</h3>
+                    <h3><FiPlus aria-hidden="true" />Nueva dirección</h3>
                     <label>Provincia<input value={newAddress.provincia} onChange={(event) => setNewAddress({ ...newAddress, provincia: event.target.value })} required /></label>
                     <label>Cantón<input value={newAddress.canton} onChange={(event) => setNewAddress({ ...newAddress, canton: event.target.value })} required /></label>
                     <label>Distrito<input value={newAddress.distrito} onChange={(event) => setNewAddress({ ...newAddress, distrito: event.target.value })} required /></label>
@@ -2100,18 +2422,22 @@ function App() {
                           <label>Cantón<input value={editingAddress.Canton} onChange={(event) => setEditingAddress({ ...editingAddress, Canton: event.target.value })} required /></label>
                           <label>Distrito<input value={editingAddress.Distrito} onChange={(event) => setEditingAddress({ ...editingAddress, Distrito: event.target.value })} required /></label>
                           <label>Señas<input value={editingAddress.Detalle} onChange={(event) => setEditingAddress({ ...editingAddress, Detalle: event.target.value })} required /></label>
-                          <button className="admin-action-button" type="submit">Guardar</button>
-                          <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setEditingAddress(null)}>Cancelar</button>
+                          <div className="account-address-actions">
+                            <button className="admin-action-button" type="submit"><FiSave aria-hidden="true" />Guardar</button>
+                            <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setEditingAddress(null)}><FiX aria-hidden="true" />Cancelar</button>
+                          </div>
                         </form>
                       ) : (
                         <>
                           <h3>{address.Principal ? 'Dirección principal' : 'Dirección'}</h3>
                           <p>{address.Detalle}, {address.Distrito}, {address.Canton}, {address.Provincia}</p>
-                          <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setEditingAddress(address)}>Editar</button>
-                          {!address.Principal && (
-                            <button className="admin-action-button" type="button" onClick={() => handleSetMainAddress(address.DireccionID)}>Usar como principal</button>
-                          )}
-                          <button className="admin-action-button" type="button" onClick={() => handleDeleteAddress(address.DireccionID)}>Eliminar</button>
+                          <div className="account-address-actions">
+                            <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setEditingAddress(address)}><FiEdit3 aria-hidden="true" />Editar</button>
+                            {!address.Principal && (
+                              <button className="admin-action-button" type="button" onClick={() => handleSetMainAddress(address.DireccionID)}><FiCheck aria-hidden="true" />Usar como principal</button>
+                            )}
+                            <button className="admin-action-button account-delete-action" type="button" onClick={() => handleDeleteAddress(address.DireccionID)}><FiTrash2 aria-hidden="true" />Eliminar</button>
+                          </div>
                         </>
                       )}
                     </article>
@@ -2122,7 +2448,7 @@ function App() {
                 )}
               </section>
               <button className="dialog-primary account-logout" type="button" onClick={handleLogout} disabled={busy}>
-                {busy ? 'Cerrando...' : 'Cerrar sesión'}
+                <FiLogOut aria-hidden="true" />{busy ? 'Cerrando...' : 'Cerrar sesión'}
               </button>
             </div>
           ) : (

@@ -75,8 +75,16 @@ export const getProductInventory = (productId) =>
 export const createProduct = (details) =>
   apiRequest('/productos', { method: 'POST', body: details })
 
-export const addProductImage = (productId, details) =>
-  apiRequest(`/productos/${productId}/imagenes`, { method: 'POST', body: details })
+export const addProductImage = (productId, details) => {
+  if (details.imagen instanceof Blob) {
+    const body = new FormData()
+    body.append('imagen', details.imagen)
+    body.append('esPrincipal', String(Boolean(details.esPrincipal)))
+    body.append('orden', String(details.orden || 0))
+    return apiRequest(`/productos/${productId}/imagenes`, { method: 'POST', body })
+  }
+  return apiRequest(`/productos/${productId}/imagenes`, { method: 'POST', body: details })
+}
 
 export const setMainProductImage = (imageId) =>
   apiRequest(`/imagenes/${imageId}/principal`, { method: 'PATCH' })
