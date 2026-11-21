@@ -25,7 +25,7 @@ async function listarProductos(req, res) {
         categoriaID || null,
         vendedorID || null,
         busqueda || null,
-        true
+        vendedorID ? false : true
       ]
     );
 
@@ -187,24 +187,37 @@ async function publicarProducto(req, res) {
     });
   }
 
-  if (!req.file) {
+  const uploadedFiles = req.files?.length
+    ? req.files
+    : (req.file ? [req.file] : [])
+
+  if (uploadedFiles.length === 0) {
     return res.status(400).json({
-      mensaje: 'Selecciona una foto para publicar el producto.'
+      mensaje: 'Selecciona al menos una foto para publicar el producto.'
     });
   }
+  const imageTypes = uploadedFiles.map((file) => ({
+    file,
+    type: detectImageType(file.buffer)
+  }))
 
-  const imageType = detectImageType(req.file.buffer);
-
-  if (!imageType || imageType.mimeType !== req.file.mimetype) {
+  if (imageTypes.some(({ file, type }) => !type || type.mimeType !== file.mimetype)) {
     return res.status(415).json({
-      mensaje: 'El contenido del archivo no corresponde a una imagen JPG, PNG o WebP válida.'
+      mensaje: 'Todas las imágenes deben ser archivos JPG, PNG o WebP válidos.'
     });
   }
 
-  const fileName = `${crypto.randomBytes(16).toString('hex')}${imageType.extension}`;
   const imageDirectory = path.join(__dirname, '../../public/productos');
-  const imagePath = path.join(imageDirectory, fileName);
-  const imageURL = `/imagenes/productos/${fileName}`;
+  const imageFiles = imageTypes.map(({ file, type }) => {
+    const fileName = `${crypto.randomBytes(16).toString('hex')}${type.extension}`;
+    return {
+      file,
+      fileName,
+      imagePath: path.join(imageDirectory, fileName),
+      imageURL: `/imagenes/productos/${fileName}`
+    };
+  });
+  const imageURL = imageFiles[0].imageURL;
   let client;
   let transactionStarted = false;
   let imageWritten = false;
@@ -239,22 +252,26 @@ async function publicarProducto(req, res) {
       throw new Error('El procedimiento no devolvió el producto creado.');
     }
 
-    await client.query(
-      'SELECT * FROM public.sp_imagenesproducto_agregar($1, $2, $3, $4, $5)',
-      [product.productoid, sellerID, imageURL, true, 0]
-    );
+    for (const [index, imageFile] of imageFiles.entries()) {
+      await client.query(
+        'SELECT * FROM public.sp_imagenesproducto_agregar($1, $2, $3, $4, $5)',
+        [product.productoid, sellerID, imageFile.imageURL, index === 0, index]
+      );
+    }
     await client.query(
       'SELECT * FROM public.sp_inventarios_agregarexistencias($1, $2, $3)',
       [product.productoid, sellerID, cantidad]
     );
 
     await fs.mkdir(imageDirectory, { recursive: true });
-    const imageFile = await fs.open(imagePath, 'wx');
-    imageWritten = true;
-    try {
-      await imageFile.writeFile(req.file.buffer);
-    } finally {
-      await imageFile.close();
+    for (const imageFile of imageFiles) {
+      const fileHandle = await fs.open(imageFile.imagePath, 'wx');
+      try {
+        await fileHandle.writeFile(imageFile.file.buffer);
+      } finally {
+        await fileHandle.close();
+      }
+      imageWritten = true;
     }
 
     await client.query('COMMIT');
@@ -279,11 +296,13 @@ async function publicarProducto(req, res) {
 
     if (imageWritten) {
       try {
-        await fs.unlink(imagePath);
+        await Promise.all(imageFiles.map((imageFile) => fs.unlink(imageFile.imagePath).catch((cleanupError) => {
+          if (cleanupError.code !== 'ENOENT') {
+            console.error('Error al limpiar la imagen de un producto no publicado:', cleanupError);
+          }
+        })));
       } catch (cleanupError) {
-        if (cleanupError.code !== 'ENOENT') {
-          console.error('Error al limpiar la imagen de un producto no publicado:', cleanupError);
-        }
+        console.error('Error al limpiar las imágenes de un producto no publicado:', cleanupError);
       }
     }
 

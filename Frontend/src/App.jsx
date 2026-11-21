@@ -82,7 +82,6 @@ import {
   updateProduct,
   updateSeller,
   updateUser,
-  addProductStock,
   addProductImage,
   setMainProductImage,
   deleteProductImage,
@@ -154,11 +153,11 @@ function App() {
   const [editingProduct, setEditingProduct] = useState(null)
   const [sellerEdit, setSellerEdit] = useState({ nombreComercial: '', descripcion: '' })
   const [profileEdit, setProfileEdit] = useState({ nombre: '', apellido: '', correo: '' })
-  const [stockToAdd, setStockToAdd] = useState('')
   const [orderStates, setOrderStates] = useState([])
   const [sellerList, setSellerList] = useState([])
   const [productImages, setProductImages] = useState([])
   const [newProductImage, setNewProductImage] = useState(null)
+  const [notificationPage, setNotificationPage] = useState(1)
   const [userRoleForm, setUserRoleForm] = useState({ userId: '', rolId: '' })
   const [selectedUser, setSelectedUser] = useState(null)
   const [adminSection, setAdminSection] = useState('orders')
@@ -172,7 +171,7 @@ function App() {
     descripcion: '',
     precio: '',
     cantidad: '',
-    imagen: null
+    imagenes: []
   })
 
   const checkoutSubtotal = cartItems.reduce((total, item) =>
@@ -195,6 +194,7 @@ function App() {
       String(product.CategoriaID) === String(category.CategoriaID)
     )
   )
+  const editingProductId = editingProduct?.ProductoID
 
   useEffect(() => {
     getSession()
@@ -213,6 +213,28 @@ function App() {
       .catch((requestError) => setError(requestError.message))
       .finally(() => setCatalogLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!editingProductId) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const previousPaddingRight = document.body.style.paddingRight
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+
+    document.body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') setEditingProduct(null)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.body.style.paddingRight = previousPaddingRight
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [editingProductId])
 
   useEffect(() => {
     if (!user) {
@@ -454,7 +476,7 @@ function App() {
         ? await getShipping(shipping.EnvioID ?? shipping.envioid).catch(() => shipping)
         : null
       const [addresses, products, paymentDetails] = await Promise.all([
-        getAddresses(),
+        getAddresses().catch(() => []),
         Promise.all(details.map((detail) =>
           getProduct(detail.ProductoID).catch(() => null)
         )),
@@ -614,6 +636,7 @@ function App() {
     setView('notifications')
     setMessage('')
     setSelectedNotification(null)
+    setNotificationPage(1)
     setBusy(true)
     setError('')
     try {
@@ -756,22 +779,6 @@ function App() {
     }
   }
 
-  async function handleAddStock(event) {
-    event.preventDefault()
-    setBusy(true)
-    setError('')
-    try {
-      await addProductStock(editingProduct.ProductoID, Number(stockToAdd))
-      setSellerProducts(await getProducts({ vendorId: seller.VendedorID }))
-      setStockToAdd('')
-      setMessage('Existencias agregadas.')
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function openProductImages(product) {
     setEditingProduct({ ...product })
     setNewProductImage(null)
@@ -860,8 +867,8 @@ function App() {
 
   async function handlePublishProduct(event) {
     event.preventDefault()
-    if (!productForm.imagen) {
-      setError('Selecciona una imagen.')
+    if (productForm.imagenes.length === 0) {
+      setError('Selecciona al menos una imagen.')
       return
     }
 
@@ -874,11 +881,11 @@ function App() {
         descripcion: productForm.descripcion,
         precio: Number(productForm.precio),
         cantidad: Number(productForm.cantidad),
-        image: productForm.imagen
+        images: productForm.imagenes
       })
       setSellerProducts(await getProducts({ vendorId: seller.VendedorID }))
       setCatalogProducts(await getProducts())
-      setProductForm({ categoriaID: '', nombre: '', descripcion: '', precio: '', cantidad: '', imagen: null })
+      setProductForm({ categoriaID: '', nombre: '', descripcion: '', precio: '', cantidad: '', imagenes: [] })
       setMessage('Producto publicado.')
     } catch (requestError) {
       setError(requestError.message)
@@ -892,7 +899,11 @@ function App() {
     setError('')
     try {
       await deactivateProduct(productId)
-      setSellerProducts(await getProducts({ vendorId: seller.VendedorID }))
+      setSellerProducts((current) => current.map((product) =>
+        product.ProductoID === productId
+          ? { ...product, Activo: false }
+          : product
+      ))
       setCatalogProducts(await getProducts())
       setMessage('Producto desactivado.')
     } catch (requestError) {
@@ -1214,6 +1225,12 @@ function App() {
   const unreadNotificationCount = notifications.filter((notification) =>
     ![true, 1, '1', 'true'].includes(notification.Leida ?? notification.leida)
   ).length
+  const notificationPageSize = 5
+  const notificationPageCount = Math.max(1, Math.ceil(notifications.length / notificationPageSize))
+  const pagedNotifications = notifications.slice(
+    (notificationPage - 1) * notificationPageSize,
+    notificationPage * notificationPageSize
+  )
 
   if (sessionLoading) {
     return (
@@ -1244,13 +1261,13 @@ function App() {
             <button type="submit"><FiSearch aria-hidden="true" />Buscar</button>
           </form>
           <nav aria-label="Acciones de cuenta" className="header-actions">
-            {user && (
+            {user?.rol === 'Comprador' && (
               <button className={`header-link${cartCount > 0 ? ' has-items' : ''}`} type="button" onClick={() => setView('cart')}>
                 <FiShoppingCart aria-hidden="true" />Carrito
                 {cartCount > 0 && <span aria-label={`${cartCount} productos en el carrito`} className="header-count">{cartCount}</span>}
               </button>
             )}
-            {user && (
+            {user?.rol === 'Comprador' && (
               <button className="header-link" type="button" onClick={openOrders}>
                 <FiPackage aria-hidden="true" />Mis pedidos
               </button>
@@ -1352,7 +1369,7 @@ function App() {
                   )}
                 </div>
                 <div className="shop-notifications-list">
-                  {notifications.map((notification) => {
+                  {pagedNotifications.map((notification) => {
                     const notificationId = notification.NotificacionID ?? notification.notificacionid
                     const isRead = [true, 1, '1', 'true'].includes(notification.Leida ?? notification.leida)
                     const title = notification.Titulo ?? notification.titulo
@@ -1396,6 +1413,25 @@ function App() {
                     )
                   })}
                 </div>
+                {notificationPageCount > 1 && (
+                  <nav className="shop-pagination" aria-label="Paginación de notificaciones">
+                    <button
+                      type="button"
+                      disabled={notificationPage === 1}
+                      onClick={() => setNotificationPage((page) => Math.max(1, page - 1))}
+                    >
+                      Anterior
+                    </button>
+                    <span>Página {notificationPage} de {notificationPageCount}</span>
+                    <button
+                      type="button"
+                      disabled={notificationPage >= notificationPageCount}
+                      onClick={() => setNotificationPage((page) => Math.min(notificationPageCount, page + 1))}
+                    >
+                      Siguiente
+                    </button>
+                  </nav>
+                )}
               </div>
             )}
           </section>
@@ -1650,7 +1686,16 @@ function App() {
                       <label>Descripción<input value={productForm.descripcion} onChange={(event) => setProductForm({ ...productForm, descripcion: event.target.value })} /></label>
                       <label>Precio<input type="number" min="1" value={productForm.precio} onChange={(event) => setProductForm({ ...productForm, precio: event.target.value })} required /></label>
                       <label>Existencias<input type="number" min="1" value={productForm.cantidad} onChange={(event) => setProductForm({ ...productForm, cantidad: event.target.value })} required /></label>
-                      <label>Imagen<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setProductForm({ ...productForm, imagen: event.target.files?.[0] || null })} required /></label>
+                      <label>Imágenes
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          onChange={(event) => setProductForm({ ...productForm, imagenes: Array.from(event.target.files || []) })}
+                          required
+                        />
+                        <small>Puedes seleccionar hasta 10 imágenes JPG, PNG o WebP.</small>
+                      </label>
                       <button className="dialog-primary" disabled={busy} type="submit">
                         {busy ? 'Publicando...' : 'Publicar producto'}
                       </button>
@@ -1663,45 +1708,88 @@ function App() {
                   <span className="shop-orders-count">{sellerProducts.length} publicados</span>
                 </div>
                 {editingProduct && (
-                  <form className="checkout-address-form shop-seller-edit" onSubmit={handleUpdateProduct}>
+                  <div className="shop-edit-modal-backdrop" role="presentation" onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) setEditingProduct(null)
+                  }}>
+                  <form className="checkout-address-form shop-seller-edit" onSubmit={handleUpdateProduct} role="dialog" aria-modal="true" aria-labelledby="edit-product-title">
                     <div className="shop-seller-edit-heading">
-                      <h3>Editar {editingProduct.Nombre}</h3>
+                      <div>
+                        <span className="shop-section-eyebrow">GESTIONAR INVENTARIO</span>
+                        <h3 id="edit-product-title">Editar {editingProduct.Nombre}</h3>
+                      </div>
                       <button type="button" onClick={() => setEditingProduct(null)} aria-label="Cerrar edición"><FiX /></button>
                     </div>
-                    <label>Categoría
-                      <select value={editingProduct.CategoriaID} onChange={(event) => setEditingProduct({ ...editingProduct, CategoriaID: event.target.value })} required>
-                        {categories.map((category) => (
-                          <option key={category.CategoriaID} value={category.CategoriaID}>{category.Nombre}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>Nombre<input value={editingProduct.Nombre} onChange={(event) => setEditingProduct({ ...editingProduct, Nombre: event.target.value })} required /></label>
-                    <label>Descripción<input value={editingProduct.Descripcion || ''} onChange={(event) => setEditingProduct({ ...editingProduct, Descripcion: event.target.value })} /></label>
-                    <label>Precio<input type="number" min="1" value={editingProduct.Precio} onChange={(event) => setEditingProduct({ ...editingProduct, Precio: event.target.value })} required /></label>
-                    <button className="admin-action-button" disabled={busy} type="submit">Guardar cambios</button>
-                    <div>
-                      <label>Agregar existencias<input type="number" min="1" value={stockToAdd} onChange={(event) => setStockToAdd(event.target.value)} required /></label>
-                      <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={handleAddStock} type="button">Agregar existencias</button>
-                    </div>
-                    <div>
-                      <label>Agregar imagen
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          onChange={(event) => setNewProductImage(event.target.files?.[0] || null)}
-                        />
+                    <div className="shop-edit-fields">
+                      <label>Categoría
+                        <select value={editingProduct.CategoriaID} onChange={(event) => setEditingProduct({ ...editingProduct, CategoriaID: event.target.value })} required>
+                          {categories.map((category) => (
+                            <option key={category.CategoriaID} value={category.CategoriaID}>{category.Nombre}</option>
+                          ))}
+                        </select>
                       </label>
-                      <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={handleAddProductImage} type="button">Agregar imagen</button>
+                      <label>Nombre<input value={editingProduct.Nombre} onChange={(event) => setEditingProduct({ ...editingProduct, Nombre: event.target.value })} required /></label>
+                      <label>Descripción<textarea rows="3" value={editingProduct.Descripcion || ''} onChange={(event) => setEditingProduct({ ...editingProduct, Descripcion: event.target.value })} /></label>
+                      <label>Precio<input type="number" min="1" value={editingProduct.Precio} onChange={(event) => setEditingProduct({ ...editingProduct, Precio: event.target.value })} required /></label>
                     </div>
-                    {productImages.map((image) => (
-                      <div key={image.ImagenID ?? image.imagenid}>
-                        <span>{(image.EsPrincipal ?? image.esprincipal) ? 'Principal' : 'Secundaria'}</span>
-                        <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => handleSetMainImage(image.ImagenID ?? image.imagenid)} type="button">Principal</button>
-                        <button className="admin-action-button" disabled={busy} onClick={() => handleDeleteProductImage(image.ImagenID ?? image.imagenid)} type="button">Eliminar</button>
+                    <div className="shop-edit-image-section">
+                      <div className="shop-edit-section-heading">
+                        <div>
+                          <span>Imágenes del producto</span>
+                          <small>{productImages.length} {productImages.length === 1 ? 'imagen' : 'imágenes'}</small>
+                        </div>
                       </div>
-                    ))}
-                    <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setEditingProduct(null)}>Cancelar</button>
+                      <div className="shop-edit-upload">
+                        <label>Agregar imagen adicional
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(event) => setNewProductImage(event.target.files?.[0] || null)}
+                          />
+                        </label>
+                        <button className="admin-action-button admin-action-secondary" disabled={busy || !newProductImage} onClick={handleAddProductImage} type="button">Agregar imagen</button>
+                      </div>
+                      {productImages.length > 0 && (
+                        <div className="shop-edit-images">
+                          {productImages.map((image) => (
+                            <article className="shop-edit-image-card" key={image.ImagenID ?? image.imagenid}>
+                              <img
+                                alt={editingProduct.Nombre}
+                                src={resolveImageUrl(image.ImagenURL ?? image.imagenurl)}
+                              />
+                              <div className="shop-edit-image-info">
+                                <span className={(image.EsPrincipal ?? image.esprincipal) ? 'is-main' : ''}>
+                                  {(image.EsPrincipal ?? image.esprincipal) ? 'Imagen principal' : 'Imagen secundaria'}
+                                </span>
+                                <div>
+                                  <button
+                                    className="admin-action-button admin-action-secondary"
+                                    disabled={busy || Boolean(image.EsPrincipal ?? image.esprincipal)}
+                                    onClick={() => handleSetMainImage(image.ImagenID ?? image.imagenid)}
+                                    type="button"
+                                  >
+                                    Principal
+                                  </button>
+                                  <button
+                                    className="shop-edit-delete-image"
+                                    disabled={busy}
+                                    onClick={() => handleDeleteProductImage(image.ImagenID ?? image.imagenid)}
+                                    type="button"
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="shop-edit-modal-actions">
+                      <button className="admin-action-button admin-action-secondary" type="button" onClick={() => setEditingProduct(null)}>Cancelar</button>
+                      <button className="admin-action-button" disabled={busy} type="submit">Guardar cambios</button>
+                    </div>
                   </form>
+                  </div>
                 )}
                 {sellerProducts.length === 0 ? (
                   <p>Aún no tienes productos.</p>
@@ -1714,6 +1802,7 @@ function App() {
                             ? <img alt={product.Nombre} src={resolveImageUrl(product.ImagenURL)} />
                             : <FiBox aria-hidden="true" />}
                           <span>{Number(product.CantidadDisponible || 0)} disponibles</span>
+                          {(product.Activo === false || product.activo === false) && <b className="shop-seller-product-status">Desactivado</b>}
                         </div>
                         <div className="shop-seller-product-copy">
                           <h3>{product.Nombre}</h3>
@@ -1723,8 +1812,13 @@ function App() {
                           <button className="admin-action-button admin-action-secondary" disabled={busy} onClick={() => openProductImages(product)} type="button">
                             <FiEdit3 />Editar
                           </button>
-                          <button className="shop-seller-deactivate" disabled={busy} onClick={() => handleDeactivateProduct(product.ProductoID)} type="button">
-                            Desactivar
+                          <button
+                            className="shop-seller-deactivate"
+                            disabled={busy || product.Activo === false || product.activo === false}
+                            onClick={() => handleDeactivateProduct(product.ProductoID)}
+                            type="button"
+                          >
+                            {product.Activo === false || product.activo === false ? 'Desactivado' : 'Desactivar'}
                           </button>
                         </div>
                       </article>

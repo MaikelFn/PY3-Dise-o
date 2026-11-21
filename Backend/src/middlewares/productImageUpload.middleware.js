@@ -9,7 +9,7 @@ const allowedTypes = new Set([
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    files: 1,
+    files: 10,
     fileSize: 5 * 1024 * 1024
   },
   fileFilter(_req, file, callback) {
@@ -25,7 +25,11 @@ const upload = multer({
 });
 
 function uploadProductImage(req, res, next) {
-  upload.single('imagen')(req, res, (error) => {
+  const uploadImages = String(req.originalUrl || req.path).includes('/publicar')
+    ? upload.array('imagenes', 10)
+    : upload.single('imagen')
+
+  uploadImages(req, res, (error) => {
     if (!error) {
       next();
       return;

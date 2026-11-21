@@ -211,10 +211,12 @@ export async function getSellerOrders() {
   return data
 }
 
-export async function publishProduct({ image, ...details }) {
+export async function publishProduct({ images, image, ...details }) {
   const body = new FormData()
   Object.entries(details).forEach(([key, value]) => body.append(key, String(value)))
-  body.append('imagen', image)
+  const selectedImages = Array.isArray(images) ? images : (image ? [image] : [])
+  selectedImages.forEach((selectedImage) => body.append('imagenes', selectedImage))
+  if (selectedImages.length === 0 && image) body.append('imagenes', image)
   return apiRequest('/productos/publicar', { method: 'POST', body })
 }
 
