@@ -23,7 +23,6 @@ PY3-Dise-o/
 │   └── public/productos/       # Imágenes subidas (servidas en /imagenes)
 ├── Frontend/
 │   └── src/                    # Aplicación React (api.js centraliza fetch)
-├── POSTMAN_Rutas.txt           # Colección de rutas para probar la API
 └── README.md
 ```
 
