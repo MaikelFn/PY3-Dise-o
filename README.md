@@ -6,23 +6,23 @@
 ```
 PY3-Dise-o/
 ├── Backend/
-│   ├── server.js               # Punto de entrada: carga .env y levanta Express
+│   ├── server.js              
 │   ├── src/
-│   │   ├── app.js              # Middlewares globales y montaje de rutas
-│   │   ├── config/database.js  # Pool de conexiones pg
-│   │   ├── controllers/        # Handlers HTTP por recurso
-│   │   ├── adapters/           # Conversión de filas pg al contrato JSON de la API
-│   │   ├── routes/             # Definición de endpoints por recurso
-│   │   ├── middlewares/        # verificarSesion, verificarRol, subida de imágenes
-│   │   ├── events/             # Bus de eventos (EventEmitter) de pedidos
-│   │   ├── observers/          # Observador que persiste notificaciones
-│   │   ├── factories/          # Factory de mensajes de notificación
-│   │   ├── models/             # (reservado)
-│   │   ├── services/           # (reservado)
-│   │   └── utils/              # postgresErrors.js: errores pg → HTTP
-│   └── public/productos/       # Imágenes subidas (servidas en /imagenes)
+│   │   ├── app.js              
+│   │   ├── config/database.js  
+│   │   ├── controllers/        
+│   │   ├── adapters/           
+│   │   ├── routes/             
+│   │   ├── middlewares/        
+│   │   ├── events/            
+│   │   ├── observers/         
+│   │   ├── factories/          
+│   │   ├── models/             
+│   │   ├── services/          
+│   │   └── utils/              
+│   └── public/productos/       
 ├── Frontend/
-│   └── src/                    # Aplicación React (api.js centraliza fetch)
+│   └── src/                   
 └── README.md
 ```
 
